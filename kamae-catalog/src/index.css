@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+
+/* Paleta Dojo/Zen: tinta sumi sobre papel washi, acento bermellón (shu). */
+@theme {
+  --color-washi: #f7f4ee;
+  --color-washi-dark: #ece6da;
+  --color-sumi: #1c1b19;
+  --color-sumi-soft: #4a4742;
+  --color-ai: #2b3a55;
+  --color-shu: #b5452f;
+
+  --font-sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-serif: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia,
+    serif;
+}
+
+@layer base {
+  html {
+    @apply bg-washi text-sumi antialiased;
+  }
+
+  body {
+    @apply min-h-svh font-sans;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-shu;
+  }
+}

@@ -4,6 +4,8 @@ import BadgeDisponibilidad from '../../components/BadgeDisponibilidad.jsx'
 import ImagenProducto from '../../components/ImagenProducto.jsx'
 import { botonPrimario } from '../../components/admin/estilos.js'
 import { borrarProducto, suscribirProductos } from '../../firebase/productosAdmin.js'
+import { suscribirUsuarios } from '../../firebase/usuariosAdmin.js'
+import { useSesion } from '../../hooks/useSesion.js'
 import { camposFaltantes } from '../../utils/completitud.js'
 import { CATEGORIAS } from '../../utils/constantes.js'
 import { formatearPrecio } from '../../utils/formato.js'
@@ -12,13 +14,31 @@ const etiquetaCategoria = (valor) =>
   CATEGORIAS.find((c) => c.valor === valor)?.etiqueta ?? valor
 
 export default function AdminProductos() {
+  const { esAdmin, usuario } = useSesion()
+  const uid = usuario.uid
   const [productos, setProductos] = useState(null)
+  const [vendedores, setVendedores] = useState({}) // uid → perfil (solo admin)
   const [error, setError] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [confirmandoBorrar, setConfirmandoBorrar] = useState(null)
   const [ocupado, setOcupado] = useState(null) // id del producto con una operación en curso
 
-  useEffect(() => suscribirProductos(setProductos, setError), [])
+  // El admin ve todos los productos; un vendedor, solo los suyos.
+  useEffect(
+    () => suscribirProductos(setProductos, setError, esAdmin ? {} : { vendedorUid: uid }),
+    [esAdmin, uid],
+  )
+
+  useEffect(() => {
+    if (!esAdmin) return
+    return suscribirUsuarios(
+      (lista) => setVendedores(Object.fromEntries(lista.map((u) => [u.uid, u]))),
+      setError,
+    )
+  }, [esAdmin])
+
+  const nombreVendedor = (vendedorUid) =>
+    vendedorUid === uid ? 'Vos' : (vendedores[vendedorUid]?.nombre ?? 'Vendedor eliminado')
 
   async function ejecutar(id, operacion) {
     setOcupado(id)
@@ -40,10 +60,10 @@ export default function AdminProductos() {
 
   return (
     <section>
-      <title>Admin · Kamae</title>
+      <title>{`${esAdmin ? 'Admin' : 'Mis productos'} · Kamae`}</title>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-serif text-2xl">
-          Productos
+          {esAdmin ? 'Productos' : 'Mis productos'}
           {productos && (
             <span className="ml-2 text-base text-sumi-soft">({productos.length})</span>
           )}
@@ -117,6 +137,11 @@ export default function AdminProductos() {
                 {p.categoria || p.precio != null ? ' · ' : ''}
                 <BadgeDisponibilidad disponibilidad={p.disponibilidad} />
               </p>
+              {esAdmin && (
+                <p className="mt-0.5 text-xs text-sumi-soft">
+                  Vendedor: {nombreVendedor(p.vendedorUid)}
+                </p>
+              )}
               {!p.visible && (
                 <p className="mt-0.5 text-xs text-shu">
                   Falta: {camposFaltantes(p).join(', ')}
@@ -142,7 +167,7 @@ export default function AdminProductos() {
                 <span className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => ejecutar(p.id, () => borrarProducto(p.id))}
+                    onClick={() => ejecutar(p.id, () => borrarProducto(p))}
                     className="font-medium text-shu"
                   >
                     Confirmar

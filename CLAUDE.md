@@ -15,10 +15,10 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
 - `src/firebase/db.js`: Firestore **lite** para el catálogo público (solo `getDocs`/`getDoc`, bundle chico).
 - `src/firebase/admin.js`: Firestore completo + Auth. Importar **solo** desde páginas lazy de `/login` y `/admin`.
 - `src/firebase/analytics.js`: `registrarEvento()`, carga Analytics bajo demanda solo en producción.
-- `src/firebase/productos.js`: el catálogo público se trae **completo una vez por sesión** (`visible == true`) y se filtra/ordena en memoria (destacados primero, luego `orden`); sin índices compuestos. Los datos llegan por **loaders de React Router** (`router.jsx`), no por `useEffect`. Filtros en la URL (`?disciplina=&categoria=`).
-- Admin: `firebase/sesion.js` (store de sesión: usuario + `esAdmin` leyendo `admins/{uid}`) + `hooks/useSesion.js`; `components/admin/AdminLayout.jsx` es la guardia lazy de `/admin` (redirige a `/login`, muestra "Sin acceso" si no es admin). CRUD en `firebase/productosAdmin.js` (tabla con `onSnapshot`; tras escribir llama `invalidarCatalogo()`). El formulario arma el doc con **exactamente** los campos que validan las reglas (`aFirestore` en `ProductoForm.jsx`).
+- `src/firebase/productos.js`: el catálogo público se trae **completo una vez por sesión** (`visible == true`) y se filtra/ordena en memoria (más nuevos primero, por `fechaCreacion`); sin índices compuestos. Los datos llegan por **loaders de React Router** (`router.jsx`), no por `useEffect`. Filtros en la URL (`?disciplina=&categoria=`).
+- Panel: `firebase/sesion.js` (store de sesión: usuario + `esAdmin` + `perfil` + `esVendedor`; registro, recuperar contraseña, verificación de email) + `hooks/useSesion.js`. `components/admin/AdminLayout.jsx` es la guardia lazy de `/admin`: redirige a `/login` y, según el estado, muestra "Pedir acceso", "Verificá tu email", "Solicitud enviada", "Rechazada" o "Suspendida". CRUD en `firebase/productosAdmin.js` (tabla con `onSnapshot`; el vendedor consulta `where vendedorUid == uid` y se ordena en el cliente para no requerir índice compuesto; tras escribir llama `invalidarCatalogo()`). Alta y borrado de productos van en **batch con su doc en `slugs/`**. Gestión de vendedores en `firebase/usuariosAdmin.js` + `pages/admin/AdminUsuarios.jsx`. El formulario arma el doc con **exactamente** los campos que validan las reglas (`aFirestore` en `ProductoForm.jsx`).
 - Lista de consulta: store sobre localStorage (`utils/listaConsulta.js`) + `useSyncExternalStore` (`hooks/useListaConsulta.js`); sin Context.
-- Dev: `npm run emulators` (Auth 9099, Firestore 8080, UI 4000) y `npm run seed` (admin `admin@kamae.test` / `kamae123`, uid `admin-dev`, + productos de prueba con un borrador). `.env.development` se commitea (sin secretos); `.env` con la config real no.
+- Dev: `npm run emulators` (Auth 9099, Firestore 8080, UI 4000) y `npm run seed` (borra todos los usuarios del emulador y carga: admin `admin@kamae.test`, vendedor aprobado `vendedor@kamae.test`, vendedor pendiente `pendiente@kamae.test`, todos con contraseña `kamae123`, + productos de prueba con un borrador). Los emails de verificación/recuperación del emulador se ven en la UI del emulador (pestaña Auth) o en `http://127.0.0.1:9099/emulator/v1/projects/demo-kamae/oobCodes`. `.env.development` se commitea (sin secretos); `.env` con la config real no.
 
 ## Convenciones
 - Idioma del código: nombres de dominio en español (productos, precio, disponibilidad), código técnico en inglés está bien.
@@ -41,7 +41,8 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
   variantes: [{ etiqueta, precio?, disponible }],  // talles shinai, colores tsuba, etc.
   visible: Boolean,                // NO lo elige el admin: true solo si está completo (ver abajo)
   imagenes: [{ url, publicId, alt }],  // publicId de Cloudinary (transformaciones y borrado)
-  whatsapp: String,                // '549' + 10 dígitos, o '' en borrador. Cada producto tiene su número (varios vendedores)
+  whatsapp: String,                // '549' + 10 dígitos, o '' en borrador. Por producto (un vendedor puede publicar algo de otra persona)
+  vendedorUid: String,             // dueño (uid de quien lo creó); inmutable. Un vendedor solo toca los suyos
   fechaCreacion, fechaActualizacion // serverTimestamp(); el catálogo y el admin ordenan por fechaCreacion desc
 }
 ```
@@ -50,12 +51,21 @@ No usar la palabra "Armas" como categoría.
 - **Sin "destacado" ni "orden" manual** (decisión del usuario): con varios admins se pisarían el orden entre sí.
 - Lista de consulta: el total se muestra separado por moneda (nunca sumar ARS con USD).
 
+## Roles y otras colecciones
+- **Admin**: doc en `admins/{uid}` (se crea a mano en la consola). Ve y edita todo; aprueba/rechaza/suspende/elimina vendedores en `/admin/usuarios`. No necesita email verificado.
+- **Vendedor**: se registra en `/login` → "Crear cuenta". Puede publicar solo si su perfil está `aprobado` **y** verificó su email (`email_verified` del token). Solo ve/edita/borra **sus** productos; no ve borradores ajenos ni la gestión de usuarios.
+- `usuarios/{uid}`: `{ nombre, email, estado: 'pendiente'|'aprobado'|'rechazado'|'suspendido', emailVerificado, fechaSolicitud, fechaActualizacion }`. El usuario lo crea él mismo, siempre `pendiente`; solo puede refrescar `emailVerificado` con el valor real de su token. El admin solo cambia `estado`.
+- **Suspender o eliminar a un vendedor borra TODOS sus productos** (decisión del usuario; sus imágenes quedan huérfanas en Cloudinary). Eliminar borra el perfil pero no la cuenta de Auth (requiere Admin SDK): podría volver a pedir acceso como pendiente; para bloquear, suspender.
+- `slugs/{slug}`: `{ productoId, vendedorUid }`. Registro para que las URLs sean únicas (un vendedor no puede listar productos ajenos para chequearlo). La regla de alta de producto exige, vía `getAfter`, que el slug se registre en el mismo batch; si ya existe, el batch falla. El slug de un producto no cambia al editar.
+- Sin plan Blaze no hay emails automáticos al admin ("nuevo usuario") ni al vendedor ("aprobado"): el admin ve un contador de pendientes en la pestaña Usuarios.
+
 ## Rutas
 - `/` catálogo (grilla + filtros por disciplina y categoría; solo `visible == true`)
 - `/producto/:slug` detalle con selector de variante y CTA WhatsApp
 - `/consulta` lista de consulta (carrito sin pago)
-- `/login`
-- `/admin` tabla CRUD (protegida)
+- `/login` (ingresar, crear cuenta de vendedor, recuperar contraseña)
+- `/admin` tabla CRUD (protegida; admin ve todo, vendedor solo lo suyo)
+- `/admin/usuarios` gestión de vendedores (solo admin)
 - `/admin/nuevo` y `/admin/editar/:id` (mismo formulario reutilizado)
 - `*` página 404
 - `firebase.json`: rewrite `"**" -> "/index.html"`
@@ -63,6 +73,7 @@ No usar la palabra "Armas" como categoría.
 ## Seguridad (crítico)
 - La ruta privada en React es solo UX. La seguridad real está en las reglas.
 - Firestore: lectura pública solo de productos `visible == true`; escritura solo para admins. NO usar `request.auth != null` como criterio de admin (cualquiera puede crearse una cuenta).
+- Escritura de productos: admin, o vendedor aprobado con email verificado sobre sus propios productos (ver "Roles").
 - **Admin = UID con documento en `admins/{uid}`** (allowlist; las reglas usan `exists()`). En producción se da de alta creando ese doc a mano en la Firebase Console. Desde el cliente nadie puede escribir ni listar `admins`; cada usuario solo puede leer su propio doc (así el frontend sabe si es admin, sin `VITE_ADMIN_UID`).
 - Las reglas también validan el esquema de `productos` (campos exactos, tipos, enums, `fechaCreacion`/`fechaActualizacion` con `serverTimestamp()`, inmutabilidad de `fechaCreacion`). Si se agrega un campo al modelo, actualizar `firestore.rules` y sus tests.
 - Tests de reglas: `tests/firestore.rules.test.js`. `npm run test:rules` levanta su propio emulador; si `npm run emulators` ya está corriendo, usar `npx vitest run` (usa otro projectId, no pisa el seed).
@@ -86,7 +97,8 @@ No usar la palabra "Armas" como categoría.
 3.5. ✅ Reglas de seguridad Firestore + pruebas en emulador (Storage no aplica: imágenes en Cloudinary)
 4. ✅ Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics
 5. ✅ Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión. Subida real verificada (JPEG 379 KB → WebP 1600 px, 64 KB) y borrado por delete token al quitar/cancelar.
-6. ✅ Deploy en **https://kamae-ar.web.app** (proyecto Firebase `kamae-ar`, Firestore en `southamerica-east1`, plan Spark). Admin de producción: `cris.javi.05@gmail.com` con doc `admins/{uid}`. API key web restringida por referrer (`kamae-ar.web.app`, `kamae-ar.firebaseapp.com`). Pendiente opcional: desactivar el sign-up de Auth desde la consola; sitio extra `kamae.web.app` (el usuario lo descartó por ahora).
+6. ✅ Deploy en **https://kamae-ar.web.app** (proyecto Firebase `kamae-ar`, Firestore en `southamerica-east1`, plan Spark). Admin de producción: `cris.javi.05@gmail.com` con doc `admins/{uid}`. API key web restringida por referrer (`kamae-ar.web.app`, `kamae-ar.firebaseapp.com`). El sign-up de Auth tiene que quedar **habilitado** (los vendedores se registran solos; la aprobación del admin es el filtro). Sitio extra `kamae.web.app`: descartado por ahora.
+6.5. ✅ Vendedores: registro con aprobación del admin, verificación de email, recuperar contraseña, cada vendedor gestiona solo sus productos.
 7. QA en móviles reales + Lighthouse
 
 ## Deploy
@@ -94,7 +106,7 @@ No usar la palabra "Armas" como categoría.
 - **Reglas de Firestore: a mano** tras cambiar `firestore.rules`: `npx firebase deploy --only firestore:rules` (desde `kamae-catalog/`). El workflow no las despliega.
 - `.env.production` se commitea (config pública); `vite.config.js` corta el build de producción si faltan variables.
 - Repo público (github.com/Faun0/kamae): GitHub marca la API key web de Firebase como "secreto"; es pública por diseño (va en el JS) y está restringida por referrer. Nunca commitear el API Secret de Cloudinary ni claves de cuentas de servicio.
-7. QA en móviles reales + Lighthouse
+- Si un cambio del modelo exige migrar datos de producción (ej. agregar un campo obligatorio), migrar ANTES de desplegar las reglas nuevas. Ya se hizo para `vendedorUid` + `slugs/` (2026-11-09).
 
 ## Deuda técnica conocida
 - SPA: las previews de links por WhatsApp/Instagram no muestran datos del producto (OG tags). Evaluar prerender o migrar a Astro/Next más adelante.

@@ -10,6 +10,7 @@ Kamae no tiene carrito ni pasarela de pago. Funciona como una vidriera: el compr
 
 - **Sin intermediarios ni comisiones:** no hay pagos online ni datos de tarjetas.
 - **Contacto directo:** cada producto tiene el WhatsApp de quien lo vende, así que varios vendedores pueden publicar en el mismo catálogo.
+- **Vendedores con aprobación:** cualquiera puede crear una cuenta de vendedor, pero solo publica cuando un administrador lo aprueba y verificó su email. Cada vendedor gestiona solo sus productos.
 - **Lista de consulta:** el comprador puede juntar varios productos y mandarlos en un solo mensaje, uno por vendedor.
 - **Panel de administración:** alta y edición de productos desde el celular, con fotos, variantes (talles o colores), precios en ARS o USD y disponibilidad (disponible, agotado o a pedido). Un producto se publica solo cuando está completo; si le falta algún dato, queda como borrador.
 

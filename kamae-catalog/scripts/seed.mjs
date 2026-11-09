@@ -23,6 +23,32 @@ const ADMIN = {
   displayName: 'Admin Kamae',
 }
 
+// Vendedores de prueba (perfil en /usuarios). El aprobado ya verificó su email.
+const VENDEDORES = [
+  {
+    uid: 'vendedor-dev',
+    email: 'vendedor@kamae.test',
+    password: 'kamae123',
+    displayName: 'Vendedor Aprobado',
+    emailVerified: true,
+    estado: 'aprobado',
+  },
+  {
+    uid: 'pendiente-dev',
+    email: 'pendiente@kamae.test',
+    password: 'kamae123',
+    displayName: 'Vendedor Pendiente',
+    emailVerified: true,
+    estado: 'pendiente',
+  },
+]
+
+// Dueño de cada producto (por slug); el resto queda a nombre del admin.
+const DUENOS = {
+  'shinai-dobari-38': 'vendedor-dev',
+  'keikogi-algodon': 'vendedor-dev',
+}
+
 // Imágenes de ejemplo que trae toda cuenta nueva de Cloudinary (placeholder hasta tener fotos reales).
 const CLOUD_NAME = 'uesxf3on'
 const img = (publicId, alt) => ({
@@ -128,39 +154,64 @@ const productos = [
   },
 ]
 
-async function seedAdmin() {
+async function recrearUsuario(datos) {
   try {
-    await auth.deleteUser(ADMIN.uid)
+    await auth.deleteUser(datos.uid)
   } catch (error) {
     if (error.code !== 'auth/user-not-found') throw error
   }
-  await auth.createUser(ADMIN)
+  await auth.createUser(datos)
+}
+
+async function seedUsuarios() {
+  // Empezar de cero: borra también usuarios registrados a mano en pruebas anteriores.
+  const { users } = await auth.listUsers()
+  if (users.length) await auth.deleteUsers(users.map((u) => u.uid))
+  await db.recursiveDelete(db.collection('usuarios'))
+  await db.recursiveDelete(db.collection('admins'))
+
+  await recrearUsuario(ADMIN)
   // Las reglas consideran admin a quien tenga documento en /admins/{uid}.
   await db.doc(`admins/${ADMIN.uid}`).set({ email: ADMIN.email })
   console.log(`✔ Admin: ${ADMIN.email} / ${ADMIN.password} (uid ${ADMIN.uid})`)
+
+  const fecha = Timestamp.now()
+  for (const { estado, ...cuenta } of VENDEDORES) {
+    await recrearUsuario(cuenta)
+    await db.doc(`usuarios/${cuenta.uid}`).set({
+      nombre: cuenta.displayName,
+      email: cuenta.email,
+      estado,
+      emailVerificado: cuenta.emailVerified,
+      fechaSolicitud: fecha,
+      fechaActualizacion: fecha,
+    })
+    console.log(`✔ Vendedor ${estado}: ${cuenta.email} / ${cuenta.password}`)
+  }
 }
 
 async function seedProductos() {
   const coleccion = db.collection('productos')
   await db.recursiveDelete(coleccion)
+  await db.recursiveDelete(db.collection('slugs'))
 
   const ahora = Date.now()
   const batch = db.batch()
   productos.forEach((producto, i) => {
     // Fechas escalonadas (1 h entre cada uno) para un orden estable.
     const fecha = Timestamp.fromMillis(ahora - i * 3_600_000)
-    batch.set(coleccion.doc(), {
-      ...producto,
-      fechaCreacion: fecha,
-      fechaActualizacion: fecha,
-    })
+    const ref = coleccion.doc()
+    const vendedorUid = DUENOS[producto.slug] ?? ADMIN.uid
+    batch.set(ref, { ...producto, vendedorUid, fechaCreacion: fecha, fechaActualizacion: fecha })
+    // Registro del slug (lo exige la regla de alta para que las URLs sean únicas).
+    batch.set(db.doc(`slugs/${producto.slug}`), { productoId: ref.id, vendedorUid })
   })
   await batch.commit()
   console.log(`✔ ${productos.length} productos cargados`)
 }
 
 try {
-  await seedAdmin()
+  await seedUsuarios()
   await seedProductos()
   process.exit(0)
 } catch (error) {

@@ -56,6 +56,10 @@ export const router = createBrowserRouter([
                 lazy: lazyPage(() => import('./pages/admin/AdminProductos.jsx')),
               },
               {
+                path: 'usuarios',
+                lazy: lazyPage(() => import('./pages/admin/AdminUsuarios.jsx')),
+              },
+              {
                 path: 'nuevo',
                 lazy: lazyPage(() => import('./pages/admin/ProductoForm.jsx')),
               },

@@ -6,6 +6,7 @@ import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 import { app, EMULADORES, usarEmuladores } from './app.js'
 
 export const auth = getAuth(app)
+auth.languageCode = 'es' // emails de verificación y de recuperación de contraseña en español
 export const adminDb = getFirestore(app)
 
 if (usarEmuladores) {

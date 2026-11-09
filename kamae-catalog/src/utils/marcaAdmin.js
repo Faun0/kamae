@@ -1,4 +1,5 @@
-// Marca liviana "este navegador tiene una sesión de admin" para el header público.
+// Marca liviana "este navegador tiene una sesión con acceso al panel" (admin o vendedor
+// aprobado) para el link "Panel" del header público.
 // Evita cargar Firebase Auth (~160 kB) en el catálogo solo para mostrar el link "Panel".
 // Es SOLO UX: la escribe firebase/sesion.js y la seguridad real está en firestore.rules.
 // Si quedara desactualizada, /admin igual verifica la sesión y redirige a /login.

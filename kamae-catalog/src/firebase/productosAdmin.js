@@ -1,31 +1,39 @@
-// Operaciones del admin sobre `productos` (SDK completo). Las reglas validan el esquema:
+// Operaciones del panel sobre `productos` (SDK completo). Las reglas validan el esquema:
 // cada escritura debe mandar exactamente los campos del modelo (ver firestore.rules).
+// Cada producto tiene dueño (`vendedorUid`) y su slug registrado en /slugs/{slug}.
 import {
-  addDoc,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
-  limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { adminDb } from './admin.js'
 import { invalidarCatalogo } from './productos.js'
 
 const productosRef = collection(adminDb, 'productos')
 const desdeDoc = (d) => ({ id: d.id, ...d.data() })
+const masNuevoPrimero = (a, b) =>
+  (b.fechaCreacion?.toMillis?.() ?? Infinity) - (a.fechaCreacion?.toMillis?.() ?? Infinity)
 
-/** Tabla en tiempo real (incluye borradores). Devuelve la función para desuscribirse. */
-export function suscribirProductos(onDatos, onError) {
+/**
+ * Productos en tiempo real (incluye borradores). Devuelve la función para desuscribirse.
+ * Con `vendedorUid`: solo los de ese vendedor (lo único que las reglas le dejan listar).
+ * Ese caso se ordena en el cliente para no necesitar un índice compuesto.
+ */
+export function suscribirProductos(onDatos, onError, { vendedorUid } = {}) {
+  const q = vendedorUid
+    ? query(productosRef, where('vendedorUid', '==', vendedorUid))
+    : query(productosRef, orderBy('fechaCreacion', 'desc'))
   return onSnapshot(
-    query(productosRef, orderBy('fechaCreacion', 'desc')),
-    (snap) => onDatos(snap.docs.map(desdeDoc)),
+    q,
+    (snap) => onDatos(snap.docs.map(desdeDoc).sort(masNuevoPrimero)),
     onError,
   )
 }
@@ -35,10 +43,7 @@ export async function obtenerProducto(id) {
   return snap.exists() ? desdeDoc(snap) : null
 }
 
-async function slugLibre(slug) {
-  const snap = await getDocs(query(productosRef, where('slug', '==', slug), limit(1)))
-  return snap.empty
-}
+const slugLibre = async (slug) => !(await getDoc(doc(adminDb, 'slugs', slug))).exists()
 
 /** Slug libre a partir de una base: "tenugui", "tenugui-2", "tenugui-3"… */
 export async function slugUnico(base) {
@@ -50,12 +55,21 @@ export async function slugUnico(base) {
   throw new Error('No se encontró un slug libre para este nombre.')
 }
 
-export async function crearProducto(datos) {
-  const ref = await addDoc(productosRef, {
+/**
+ * Alta: producto + registro del slug en el mismo batch. Si otro se quedó con el slug
+ * en el medio, las reglas rechazan el batch completo (no quedan URLs repetidas).
+ */
+export async function crearProducto(datos, vendedorUid) {
+  const ref = doc(productosRef)
+  const batch = writeBatch(adminDb)
+  batch.set(ref, {
     ...datos,
+    vendedorUid,
     fechaCreacion: serverTimestamp(),
     fechaActualizacion: serverTimestamp(),
   })
+  batch.set(doc(adminDb, 'slugs', datos.slug), { productoId: ref.id, vendedorUid })
+  await batch.commit()
   invalidarCatalogo()
   return ref.id
 }
@@ -68,7 +82,32 @@ export async function actualizarProducto(id, cambios) {
   invalidarCatalogo()
 }
 
-export async function borrarProducto(id) {
-  await deleteDoc(doc(adminDb, 'productos', id))
+/** Borra el producto y libera su slug. */
+export async function borrarProducto(producto) {
+  const batch = writeBatch(adminDb)
+  batch.delete(doc(adminDb, 'productos', producto.id))
+  batch.delete(doc(adminDb, 'slugs', producto.slug))
+  await batch.commit()
   invalidarCatalogo()
+}
+
+/**
+ * Borra TODOS los productos de un vendedor (al suspenderlo o eliminarlo). Solo admin.
+ * Las imágenes quedan huérfanas en Cloudinary (ver CLAUDE.md).
+ * @returns {Promise<number>} cantidad de productos borrados
+ */
+export async function borrarProductosDeVendedor(vendedorUid) {
+  const snap = await getDocs(query(productosRef, where('vendedorUid', '==', vendedorUid)))
+  const productos = snap.docs.map(desdeDoc)
+  // 2 operaciones por producto; los batches admiten hasta 500.
+  for (let i = 0; i < productos.length; i += 200) {
+    const batch = writeBatch(adminDb)
+    for (const p of productos.slice(i, i + 200)) {
+      batch.delete(doc(adminDb, 'productos', p.id))
+      batch.delete(doc(adminDb, 'slugs', p.slug))
+    }
+    await batch.commit()
+  }
+  if (productos.length) invalidarCatalogo()
+  return productos.length
 }

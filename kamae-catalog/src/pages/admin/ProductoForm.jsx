@@ -15,6 +15,7 @@ import {
   obtenerProducto,
   slugUnico,
 } from '../../firebase/productosAdmin.js'
+import { useSesion } from '../../hooks/useSesion.js'
 import { borrarImagenPorToken } from '../../utils/cloudinarySubida.js'
 import { camposFaltantes } from '../../utils/completitud.js'
 import { CATEGORIAS, DISCIPLINAS, DISPONIBILIDAD, MONEDAS } from '../../utils/constantes.js'
@@ -129,6 +130,8 @@ export default function ProductoForm() {
 function Formulario({ id }) {
   const esEdicion = Boolean(id)
   const navigate = useNavigate()
+  const { esAdmin, usuario } = useSesion()
+  const uid = usuario.uid
   const [form, setForm] = useState(() =>
     esEdicion ? null : { ...FORM_VACIO, whatsapp: leerUltimoWhatsApp() },
   )
@@ -144,14 +147,20 @@ function Formulario({ id }) {
     obtenerProducto(id)
       .then((p) => {
         if (!activo) return
-        if (p) setForm(aFormulario(p))
-        else setErrorCarga('El producto no existe (¿lo borraron?).')
+        if (!p) setErrorCarga('El producto no existe (¿lo borraron?).')
+        // Un vendedor puede ver productos ajenos publicados, pero no editarlos.
+        else if (!esAdmin && p.vendedorUid !== uid) {
+          setErrorCarga('Este producto es de otro vendedor: no podés editarlo.')
+        } else setForm(aFormulario(p))
       })
-      .catch((e) => activo && setErrorCarga(e.message))
+      .catch((e) =>
+        activo &&
+        setErrorCarga(e.code === 'permission-denied' ? 'No tenés acceso a este producto.' : e.message),
+      )
     return () => {
       activo = false
     }
-  }, [id, esEdicion])
+  }, [id, esEdicion, esAdmin, uid])
 
   if (errorCarga) {
     return (
@@ -210,7 +219,7 @@ function Formulario({ id }) {
         await actualizarProducto(id, datos)
       } else {
         const slug = await slugUnico(slugify(datos.nombre))
-        await crearProducto({ ...datos, slug })
+        await crearProducto({ ...datos, slug }, uid)
       }
       recordarWhatsApp(form.whatsapp)
       navigate('/admin')

@@ -86,7 +86,14 @@ No usar la palabra "Armas" como categoría.
 3.5. ✅ Reglas de seguridad Firestore + pruebas en emulador (Storage no aplica: imágenes en Cloudinary)
 4. ✅ Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics
 5. ✅ Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión. Subida real verificada (JPEG 379 KB → WebP 1600 px, 64 KB) y borrado por delete token al quitar/cancelar.
-6. Deploy: build, rewrites, verificar que el site ID `kamae` esté libre, GitHub Actions. En Firebase Console: crear el usuario admin + doc `admins/{uid}`, y en Auth → Configuración desactivar el alta de usuarios (sign-up) desde el cliente.
+6. ✅ Deploy en **https://kamae-ar.web.app** (proyecto Firebase `kamae-ar`, Firestore en `southamerica-east1`, plan Spark). Admin de producción: `cris.javi.05@gmail.com` con doc `admins/{uid}`. API key web restringida por referrer (`kamae-ar.web.app`, `kamae-ar.firebaseapp.com`). Pendiente opcional: desactivar el sign-up de Auth desde la consola; sitio extra `kamae.web.app` (el usuario lo descartó por ahora).
+7. QA en móviles reales + Lighthouse
+
+## Deploy
+- **Automático**: `.github/workflows/deploy.yml` (raíz del repo) en cada push a `main` que toque `kamae-catalog/`: `npm ci` → lint → `test:rules` → build → Firebase Hosting. Si algo falla, no publica. Secret de GitHub: `FIREBASE_SERVICE_ACCOUNT_KAMAE_AR` (creado con `firebase init hosting:github`).
+- **Reglas de Firestore: a mano** tras cambiar `firestore.rules`: `npx firebase deploy --only firestore:rules` (desde `kamae-catalog/`). El workflow no las despliega.
+- `.env.production` se commitea (config pública); `vite.config.js` corta el build de producción si faltan variables.
+- Repo público (github.com/Faun0/kamae): GitHub marca la API key web de Firebase como "secreto"; es pública por diseño (va en el JS) y está restringida por referrer. Nunca commitear el API Secret de Cloudinary ni claves de cuentas de servicio.
 7. QA en móviles reales + Lighthouse
 
 ## Deuda técnica conocida

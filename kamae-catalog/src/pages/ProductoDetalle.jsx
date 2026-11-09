@@ -35,6 +35,7 @@ function Detalle({ producto }) {
     nombre: producto.nombre,
     variante: variante?.etiqueta ?? null,
     precio,
+    moneda: producto.moneda,
   }
 
   function agregarALista() {
@@ -92,7 +93,7 @@ function Detalle({ producto }) {
         <div>
           <BadgeDisponibilidad disponibilidad={producto.disponibilidad} />
           <h1 className="mt-3 font-serif text-3xl leading-tight">{producto.nombre}</h1>
-          <p className="mt-3 text-2xl">{formatearPrecio(precio)}</p>
+          <p className="mt-3 text-2xl">{formatearPrecio(precio, producto.moneda)}</p>
 
           {producto.disponibilidad === 'a_pedido' && producto.tiempoProduccion && (
             <p className="mt-2 text-sm text-shu">

@@ -24,7 +24,7 @@ const desdeDoc = (d) => ({ id: d.id, ...d.data() })
 /** Tabla en tiempo real (incluye borradores). Devuelve la función para desuscribirse. */
 export function suscribirProductos(onDatos, onError) {
   return onSnapshot(
-    query(productosRef, orderBy('orden')),
+    query(productosRef, orderBy('fechaCreacion', 'desc')),
     (snap) => onDatos(snap.docs.map(desdeDoc)),
     onError,
   )
@@ -35,16 +35,19 @@ export async function obtenerProducto(id) {
   return snap.exists() ? desdeDoc(snap) : null
 }
 
-/** true si ningún otro producto usa ese slug. */
-export async function slugDisponible(slug, idActual) {
-  const snap = await getDocs(query(productosRef, where('slug', '==', slug), limit(2)))
-  return snap.docs.every((d) => d.id === idActual)
+async function slugLibre(slug) {
+  const snap = await getDocs(query(productosRef, where('slug', '==', slug), limit(1)))
+  return snap.empty
 }
 
-/** Orden para un producto nuevo: al final de la lista. */
-export async function siguienteOrden() {
-  const snap = await getDocs(query(productosRef, orderBy('orden', 'desc'), limit(1)))
-  return snap.empty ? 1 : (snap.docs[0].data().orden ?? 0) + 1
+/** Slug libre a partir de una base: "tenugui", "tenugui-2", "tenugui-3"… */
+export async function slugUnico(base) {
+  for (let n = 1; n <= 100; n++) {
+    const sufijo = n === 1 ? '' : `-${n}`
+    const candidato = base.slice(0, 100 - sufijo.length).replace(/-+$/, '') + sufijo
+    if (await slugLibre(candidato)) return candidato
+  }
+  throw new Error('No se encontró un slug libre para este nombre.')
 }
 
 export async function crearProducto(datos) {

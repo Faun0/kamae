@@ -37,9 +37,7 @@ const productoValido = (cambios = {}) => ({
   tiempoProduccion: '',
   variantes: [{ etiqueta: '3.8', disponible: true }],
   visible: true,
-  destacado: false,
-  orden: 1,
-  imagenes: [],
+  imagenes: [{ url: 'https://example.com/a.webp', publicId: 'kamae/a', alt: '' }],
   fechaCreacion: serverTimestamp(),
   fechaActualizacion: serverTimestamp(),
   ...cambios,
@@ -160,11 +158,12 @@ describe('validación del esquema (aun siendo admin)', () => {
     'categoría inexistente': { categoria: 'armas' },
     'precio negativo': { precio: -1 },
     'precio como texto': { precio: '50000' },
-    'moneda distinta de ARS': { moneda: 'USD' },
+    'moneda no soportada': { moneda: 'EUR' },
     'disponibilidad inválida': { disponibilidad: 'quizas' },
     'disciplina inválida': { disciplina: ['kendo', 'judo'] },
-    'sin disciplina': { disciplina: [] },
-    'nombre vacío': { nombre: '' },
+    'nombre vacío (incluso en borrador)': { nombre: '', visible: false },
+    'campos eliminados del modelo (destacado)': { destacado: true },
+    'campos eliminados del modelo (orden)': { orden: 1 },
     'slug con mayúsculas/espacios': { slug: 'Shinai de Prueba' },
     'visible no booleano': { visible: 'si' },
     'campo extra': { stock: 10 },
@@ -181,6 +180,54 @@ describe('validación del esquema (aun siendo admin)', () => {
       await assertFails(setDoc(doc(admin(), 'productos', 'nuevo'), productoValido(cambios)))
     })
   }
+
+  it('acepta precios en USD', async () => {
+    await assertSucceeds(
+      setDoc(doc(admin(), 'productos', 'nuevo'), productoValido({ moneda: 'USD', precio: 120 })),
+    )
+  })
+
+  const incompletos = {
+    'sin descripción': { descripcion: '' },
+    'sin disciplina': { disciplina: [] },
+    'sin categoría': { categoria: '' },
+    'sin precio': { precio: null },
+    'sin imágenes': { imagenes: [] },
+  }
+
+  for (const [caso, cambios] of Object.entries(incompletos)) {
+    it(`no publica un producto incompleto (${caso})`, async () => {
+      await assertFails(setDoc(doc(admin(), 'productos', 'nuevo'), productoValido(cambios)))
+    })
+  }
+
+  it('acepta un borrador con datos incompletos', async () => {
+    const borrador = productoValido({
+      visible: false,
+      descripcion: '',
+      disciplina: [],
+      categoria: '',
+      precio: null,
+      imagenes: [],
+    })
+    await assertSucceeds(setDoc(doc(admin(), 'productos', 'nuevo'), borrador))
+  })
+
+  it('no permite publicar un borrador incompleto editando solo `visible`', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const fecha = Timestamp.fromDate(new Date('2026-01-01'))
+      await setDoc(
+        doc(ctx.firestore(), 'productos', 'incompleto'),
+        productoValido({ visible: false, categoria: '', fechaCreacion: fecha, fechaActualizacion: fecha }),
+      )
+    })
+    await assertFails(
+      updateDoc(doc(admin(), 'productos', 'incompleto'), {
+        visible: true,
+        fechaActualizacion: serverTimestamp(),
+      }),
+    )
+  })
 
   it('rechaza un producto al que le falta un campo', async () => {
     const { descripcion, ...sinDescripcion } = productoValido()

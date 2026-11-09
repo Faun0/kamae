@@ -3,11 +3,8 @@ import { Link } from 'react-router-dom'
 import BadgeDisponibilidad from '../../components/BadgeDisponibilidad.jsx'
 import ImagenProducto from '../../components/ImagenProducto.jsx'
 import { botonPrimario } from '../../components/admin/estilos.js'
-import {
-  actualizarProducto,
-  borrarProducto,
-  suscribirProductos,
-} from '../../firebase/productosAdmin.js'
+import { borrarProducto, suscribirProductos } from '../../firebase/productosAdmin.js'
+import { camposFaltantes } from '../../utils/completitud.js'
 import { CATEGORIAS } from '../../utils/constantes.js'
 import { formatearPrecio } from '../../utils/formato.js'
 
@@ -100,35 +97,34 @@ export default function AdminProductos() {
                 >
                   {p.nombre}
                 </Link>
-                {!p.visible && (
+                {p.visible ? (
+                  <span className="rounded-sm bg-ai/10 px-2 py-0.5 text-xs text-ai">
+                    Publicado
+                  </span>
+                ) : (
                   <span className="rounded-sm bg-sumi/10 px-2 py-0.5 text-xs text-sumi-soft">
                     Borrador
                   </span>
                 )}
-                {p.destacado && <span className="text-xs text-shu">★ Destacado</span>}
               </div>
               <p className="mt-0.5 text-sm text-sumi-soft">
-                {etiquetaCategoria(p.categoria)} · {formatearPrecio(p.precio)} ·{' '}
+                {[
+                  p.categoria && etiquetaCategoria(p.categoria),
+                  p.precio != null && formatearPrecio(p.precio, p.moneda),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                {p.categoria || p.precio != null ? ' · ' : ''}
                 <BadgeDisponibilidad disponibilidad={p.disponibilidad} />
               </p>
+              {!p.visible && (
+                <p className="mt-0.5 text-xs text-shu">
+                  Falta: {camposFaltantes(p).join(', ')}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-4 text-sm">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={p.visible}
-                  disabled={ocupado === p.id}
-                  onChange={(e) =>
-                    ejecutar(p.id, () =>
-                      actualizarProducto(p.id, { visible: e.target.checked }),
-                    )
-                  }
-                  className="accent-sumi"
-                />
-                Visible
-              </label>
-
               {p.visible && (
                 <Link
                   to={`/producto/${p.slug}`}

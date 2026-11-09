@@ -2,7 +2,7 @@
 // Uso: con `npm run emulators` corriendo, en otra terminal `npm run seed`.
 import { initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
-import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 
 const PROJECT_ID = 'demo-kamae'
 
@@ -31,6 +31,9 @@ const img = (publicId, alt) => ({
   alt,
 })
 
+// El Admin SDK no pasa por las reglas: respetar a mano el esquema de firestore.rules
+// (un producto visible debe estar completo: descripción, disciplina, categoría, precio, imagen).
+// Orden del array = del más nuevo al más viejo (el catálogo ordena por fechaCreacion desc).
 const productos = [
   {
     nombre: 'Shinai Dobari 3.8',
@@ -39,6 +42,7 @@ const productos = [
     disciplina: ['kendo'],
     categoria: 'shinai',
     precio: 65000,
+    moneda: 'ARS',
     disponibilidad: 'disponible',
     tiempoProduccion: '',
     variantes: [
@@ -46,28 +50,12 @@ const productos = [
       { etiqueta: '3.8 (adultos)', disponible: true },
       { etiqueta: '3.9 (adultos, largo)', precio: 70000, disponible: false },
     ],
+    visible: true,
     imagenes: [
       img('cld-sample-4', 'Shinai, vista general'),
       img('cld-sample-5', 'Shinai, detalle de la tsuka'),
       img('samples/look-up', 'Shinai, detalle del sakigawa'),
     ],
-    visible: true,
-    destacado: true,
-    orden: 1,
-  },
-  {
-    nombre: 'Bokken de roble blanco',
-    slug: 'bokken-roble-blanco',
-    descripcion: 'Bokken de roble blanco japonés para kata de Kendo e Iaido.',
-    disciplina: ['kendo', 'iaido'],
-    categoria: 'bokken',
-    precio: 85000,
-    disponibilidad: 'disponible',
-    tiempoProduccion: '',
-    variantes: [],
-    visible: true,
-    destacado: false,
-    orden: 2,
   },
   {
     nombre: 'Tsuba personalizada impresa en 3D',
@@ -76,45 +64,58 @@ const productos = [
     disciplina: ['iaido'],
     categoria: 'tsuba',
     precio: 25000,
+    moneda: 'ARS',
     disponibilidad: 'a_pedido',
     tiempoProduccion: '7-10 días',
     variantes: [
       { etiqueta: 'Negro mate', disponible: true },
       { etiqueta: 'Bronce envejecido', precio: 28000, disponible: true },
     ],
-    imagenes: [img('samples/ecommerce/analog-classic', 'Tsuba negro mate')],
     visible: true,
-    destacado: true,
-    orden: 3,
+    imagenes: [img('samples/ecommerce/analog-classic', 'Tsuba negro mate')],
+  },
+  {
+    nombre: 'Bokken de roble blanco',
+    slug: 'bokken-roble-blanco',
+    descripcion: 'Bokken de roble blanco japonés para kata de Kendo e Iaido.',
+    disciplina: ['kendo', 'iaido'],
+    categoria: 'bokken',
+    precio: 85000,
+    moneda: 'ARS',
+    disponibilidad: 'disponible',
+    tiempoProduccion: '',
+    variantes: [],
+    visible: true,
+    imagenes: [img('samples/ecommerce/leather-bag-gray', 'Bokken de roble blanco')],
   },
   {
     nombre: 'Iaito 2.45 shaku',
     slug: 'iaito-245',
-    descripcion: 'Iaito de aleación sin filo para práctica de Iaido.',
+    descripcion: 'Iaito de aleación sin filo para práctica de Iaido. Importado: precio en dólares.',
     disciplina: ['iaido'],
     categoria: 'iaito',
-    precio: 420000,
+    precio: 380,
+    moneda: 'USD',
     disponibilidad: 'agotado',
     tiempoProduccion: '',
     variantes: [],
-    imagenes: [img('samples/landscapes/architecture-signs', 'Iaito 2.45 shaku')],
     visible: true,
-    destacado: false,
-    orden: 4,
+    imagenes: [img('samples/landscapes/architecture-signs', 'Iaito 2.45 shaku')],
   },
   {
-    nombre: 'Keikogi de algodón (borrador)',
+    // Borrador incompleto (sin imagen ni categoría): no aparece en el catálogo público.
+    nombre: 'Keikogi de algodón',
     slug: 'keikogi-algodon',
-    descripcion: 'Producto en borrador: no debe aparecer en el catálogo público.',
+    descripcion: '',
     disciplina: ['kendo', 'iaido'],
-    categoria: 'indumentaria',
+    categoria: '',
     precio: 95000,
+    moneda: 'ARS',
     disponibilidad: 'disponible',
     tiempoProduccion: '',
     variantes: [],
     visible: false,
-    destacado: false,
-    orden: 5,
+    imagenes: [],
   },
 ]
 
@@ -134,16 +135,17 @@ async function seedProductos() {
   const coleccion = db.collection('productos')
   await db.recursiveDelete(coleccion)
 
+  const ahora = Date.now()
   const batch = db.batch()
-  for (const producto of productos) {
+  productos.forEach((producto, i) => {
+    // Fechas escalonadas (1 h entre cada uno) para un orden estable.
+    const fecha = Timestamp.fromMillis(ahora - i * 3_600_000)
     batch.set(coleccion.doc(), {
-      imagenes: [], // el bokken queda sin imagen a propósito (prueba el placeholder)
       ...producto,
-      moneda: 'ARS',
-      fechaCreacion: FieldValue.serverTimestamp(),
-      fechaActualizacion: FieldValue.serverTimestamp(),
+      fechaCreacion: fecha,
+      fechaActualizacion: fecha,
     })
-  }
+  })
   await batch.commit()
   console.log(`✔ ${productos.length} productos cargados`)
 }

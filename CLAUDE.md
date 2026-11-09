@@ -29,21 +29,25 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
 ## Modelo de datos — colección `productos`
 ```js
 {
-  nombre, slug,                    // slug único para /producto/:slug
+  nombre,                          // obligatorio siempre (incluso en borrador)
+  slug,                            // automático desde el nombre al crear, único (-2, -3…); NO cambia al editar (links compartidos)
   descripcion,
   disciplina: ['kendo'|'iaido'],   // array
-  categoria: 'shinai'|'bokken'|'iaito'|'tsuba'|'bogu'|'indumentaria'|'accesorios',
-  precio: Number, moneda: 'ARS',
+  categoria: ''|'shinai'|'bokken'|'iaito'|'tsuba'|'bogu'|'indumentaria'|'accesorios',  // '' solo en borrador
+  precio: Number|null,             // null solo en borrador; las variantes usan la misma moneda
+  moneda: 'ARS'|'USD',
   disponibilidad: 'disponible'|'agotado'|'a_pedido',
   tiempoProduccion: String,        // para a_pedido (ej. '7-10 días')
   variantes: [{ etiqueta, precio?, disponible }],  // talles shinai, colores tsuba, etc.
-  visible: Boolean,                // publicado vs borrador (distinto de stock)
-  destacado: Boolean, orden: Number,
+  visible: Boolean,                // NO lo elige el admin: true solo si está completo (ver abajo)
   imagenes: [{ url, publicId, alt }],  // publicId de Cloudinary (transformaciones y borrado)
-  fechaCreacion, fechaActualizacion // serverTimestamp()
+  fechaCreacion, fechaActualizacion // serverTimestamp(); el catálogo y el admin ordenan por fechaCreacion desc
 }
 ```
 No usar la palabra "Armas" como categoría.
+- **Publicación automática**: al guardar, el producto se publica (`visible: true`) solo si tiene descripción, disciplina, categoría, precio y ≥1 imagen; si falta algo queda como borrador y el admin muestra qué falta. Criterio duplicado en `utils/completitud.js` y `productoCompleto()` de `firestore.rules`: mantenerlos sincronizados.
+- **Sin "destacado" ni "orden" manual** (decisión del usuario): con varios admins se pisarían el orden entre sí.
+- Lista de consulta: el total se muestra separado por moneda (nunca sumar ARS con USD).
 
 ## Rutas
 - `/` catálogo (grilla + filtros por disciplina y categoría; solo `visible == true`)

@@ -15,6 +15,11 @@ export const CATEGORIAS = [
   { valor: 'accesorios', etiqueta: 'Accesorios' },
 ]
 
+export const MONEDAS = [
+  { valor: 'ARS', etiqueta: 'ARS ($)' },
+  { valor: 'USD', etiqueta: 'USD (US$)' },
+]
+
 // Límites que también valida firestore.rules.
 export const MAX_IMAGENES = 10
 export const MAX_VARIANTES = 30

@@ -13,26 +13,23 @@ import {
   actualizarProducto,
   crearProducto,
   obtenerProducto,
-  siguienteOrden,
-  slugDisponible,
+  slugUnico,
 } from '../../firebase/productosAdmin.js'
 import { borrarImagenPorToken } from '../../utils/cloudinarySubida.js'
-import { CATEGORIAS, DISCIPLINAS, DISPONIBILIDAD } from '../../utils/constantes.js'
-import { SLUG_VALIDO, slugify } from '../../utils/slug.js'
+import { camposFaltantes } from '../../utils/completitud.js'
+import { CATEGORIAS, DISCIPLINAS, DISPONIBILIDAD, MONEDAS } from '../../utils/constantes.js'
+import { slugify } from '../../utils/slug.js'
 
 const FORM_VACIO = {
   nombre: '',
-  slug: '',
   descripcion: '',
   disciplina: [],
   categoria: '',
   precio: '',
+  moneda: 'ARS',
   disponibilidad: 'disponible',
   tiempoProduccion: '',
   variantes: [],
-  visible: false,
-  destacado: false,
-  orden: '',
   imagenes: [],
 }
 
@@ -41,8 +38,8 @@ function aFormulario(p) {
   return {
     ...FORM_VACIO,
     ...p,
-    precio: String(p.precio ?? ''),
-    orden: String(p.orden ?? ''),
+    precio: p.precio == null ? '' : String(p.precio),
+    moneda: p.moneda ?? 'ARS',
     variantes: (p.variantes ?? []).map((v) => ({
       key: crypto.randomUUID(),
       etiqueta: v.etiqueta ?? '',
@@ -54,16 +51,16 @@ function aFormulario(p) {
 }
 
 // Estado del formulario → documento con EXACTAMENTE los campos que validan las reglas
-// (sin fechas ni orden: los agrega productosAdmin / el submit).
+// (sin slug ni fechas: los agregan el submit / productosAdmin).
+// `visible` no se elige: se publica solo si está completo (utils/completitud.js).
 function aFirestore(f) {
-  return {
+  const datos = {
     nombre: f.nombre.trim(),
-    slug: f.slug,
     descripcion: f.descripcion.trim(),
     disciplina: f.disciplina,
     categoria: f.categoria,
-    precio: Number(f.precio),
-    moneda: 'ARS',
+    precio: f.precio === '' ? null : Number(f.precio),
+    moneda: f.moneda,
     disponibilidad: f.disponibilidad,
     tiempoProduccion: f.disponibilidad === 'a_pedido' ? f.tiempoProduccion.trim() : '',
     variantes: f.variantes.map((v) => ({
@@ -71,31 +68,23 @@ function aFirestore(f) {
       disponible: v.disponible,
       ...(v.precio !== '' && { precio: Number(v.precio) }),
     })),
-    visible: f.visible,
-    destacado: f.destacado,
     imagenes: f.imagenes.map(({ url, publicId, alt }) => ({
       url,
       publicId,
       alt: alt.trim(),
     })),
   }
+  return { ...datos, visible: camposFaltantes(datos).length === 0 }
 }
 
-const esPrecioValido = (valor) => valor !== '' && Number.isFinite(Number(valor)) && Number(valor) >= 0
+const esPrecioValido = (valor) => Number.isFinite(Number(valor)) && Number(valor) >= 0
 
+// Solo errores de formato: lo que falte no bloquea, deja el producto como borrador.
 function validar(f) {
   const e = {}
-  if (!f.nombre.trim()) e.nombre = 'Obligatorio.'
-  else if (f.nombre.trim().length > 120) e.nombre = 'Máximo 120 caracteres.'
-  if (!SLUG_VALIDO.test(f.slug)) e.slug = 'Solo minúsculas, números y guiones (ej. shinai-38).'
-  if (f.descripcion.length > 5000) e.descripcion = 'Máximo 5000 caracteres.'
-  if (f.disciplina.length === 0) e.disciplina = 'Elegí al menos una.'
-  if (!f.categoria) e.categoria = 'Elegí una categoría.'
-  if (!esPrecioValido(f.precio)) e.precio = 'Ingresá un precio válido.'
-  if (f.disponibilidad === 'a_pedido' && f.tiempoProduccion.trim().length > 50) {
-    e.tiempoProduccion = 'Máximo 50 caracteres.'
-  }
-  if (f.orden !== '' && !Number.isFinite(Number(f.orden))) e.orden = 'Debe ser un número.'
+  if (!f.nombre.trim()) e.nombre = 'El nombre es obligatorio (incluso para un borrador).'
+  else if (!slugify(f.nombre)) e.nombre = 'El nombre tiene que incluir letras o números.'
+  if (f.precio !== '' && !esPrecioValido(f.precio)) e.precio = 'Ingresá un precio válido.'
 
   const variantes = {}
   for (const v of f.variantes) {
@@ -117,7 +106,6 @@ function Formulario({ id }) {
   const navigate = useNavigate()
   const [form, setForm] = useState(esEdicion ? null : FORM_VACIO)
   const [errorCarga, setErrorCarga] = useState(null)
-  const [slugManual, setSlugManual] = useState(esEdicion)
   const [errores, setErrores] = useState({})
   const [subiendo, setSubiendo] = useState([])
   const [guardando, setGuardando] = useState(false)
@@ -151,11 +139,11 @@ function Formulario({ id }) {
   if (!form) return <p className="py-8 text-sumi-soft">Cargando producto…</p>
 
   // Al editar un campo se borra su error (los demás se mantienen hasta el próximo guardado).
-  function limpiarError(...campos) {
+  function limpiarError(campo) {
     setErrores((e) => {
-      if (!campos.some((c) => c in e)) return e
+      if (!(campo in e)) return e
       const copia = { ...e }
-      campos.forEach((c) => delete copia[c])
+      delete copia[campo]
       return copia
     })
   }
@@ -166,11 +154,6 @@ function Formulario({ id }) {
       [campo]: typeof valor === 'function' ? valor(f[campo]) : valor,
     }))
     limpiarError(campo)
-  }
-
-  function cambiarNombre(nombre) {
-    setForm((f) => ({ ...f, nombre, slug: slugManual ? f.slug : slugify(nombre) }))
-    limpiarError('nombre', ...(slugManual ? [] : ['slug']))
   }
 
   function alternarDisciplina(valor) {
@@ -190,20 +173,18 @@ function Formulario({ id }) {
     setErrorGuardar(null)
     const nuevosErrores = validar(form)
     setErrores(nuevosErrores)
-    if (Object.keys(nuevosErrores).length) {
-      return
-    }
+    if (Object.keys(nuevosErrores).length) return
 
     setGuardando(true)
     try {
-      if (!(await slugDisponible(form.slug, id))) {
-        setErrores({ slug: 'Ya hay otro producto con este slug.' })
-        return
-      }
       const datos = aFirestore(form)
-      const orden = form.orden === '' ? await siguienteOrden() : Number(form.orden)
-      if (esEdicion) await actualizarProducto(id, { ...datos, orden })
-      else await crearProducto({ ...datos, orden })
+      if (esEdicion) {
+        // La URL (slug) queda fija al editar: los links ya compartidos siguen andando.
+        await actualizarProducto(id, datos)
+      } else {
+        const slug = await slugUnico(slugify(datos.nombre))
+        await crearProducto({ ...datos, slug })
+      }
       navigate('/admin')
     } catch (e) {
       setErrorGuardar(
@@ -217,11 +198,15 @@ function Formulario({ id }) {
   }
 
   const subidasEnCurso = subiendo.some((s) => !s.error)
+  const faltantes = camposFaltantes({
+    ...form,
+    precio: form.precio === '' ? null : form.precio,
+  })
   const mensajeError =
     errorGuardar ?? (Object.keys(errores).length > 0 ? 'Revisá los campos marcados.' : null)
 
   return (
-    <form onSubmit={guardar} noValidate className="pb-24">
+    <form onSubmit={guardar} noValidate className="pb-28">
       <title>{`${esEdicion ? 'Editar' : 'Nuevo'} producto · Admin Kamae`}</title>
       <Link to="/admin" className="text-sm text-sumi-soft hover:text-sumi">
         ← Volver a la lista
@@ -235,31 +220,13 @@ function Formulario({ id }) {
           <input
             id="nombre"
             value={form.nombre}
-            onChange={(e) => cambiarNombre(e.target.value)}
+            onChange={(e) => set('nombre', e.target.value)}
             maxLength={120}
             aria-invalid={Boolean(errores.nombre)}
             className={inputClase}
           />
         </Campo>
-        <Campo
-          id="slug"
-          etiqueta="Slug (URL)"
-          error={errores.slug}
-          ayuda={`kamae.web.app/producto/${form.slug || '…'}`}
-        >
-          <input
-            id="slug"
-            value={form.slug}
-            onChange={(e) => {
-              setSlugManual(true)
-              set('slug', e.target.value.toLowerCase())
-            }}
-            maxLength={100}
-            aria-invalid={Boolean(errores.slug)}
-            className={`${inputClase} font-mono`}
-          />
-        </Campo>
-        <Campo id="descripcion" etiqueta="Descripción" error={errores.descripcion}>
+        <Campo id="descripcion" etiqueta="Descripción">
           <textarea
             id="descripcion"
             rows={5}
@@ -287,14 +254,12 @@ function Formulario({ id }) {
               </label>
             ))}
           </div>
-          {errores.disciplina && <MensajeError>{errores.disciplina}</MensajeError>}
         </fieldset>
-        <Campo id="categoria" etiqueta="Categoría" error={errores.categoria}>
+        <Campo id="categoria" etiqueta="Categoría">
           <select
             id="categoria"
             value={form.categoria}
             onChange={(e) => set('categoria', e.target.value)}
-            aria-invalid={Boolean(errores.categoria)}
             className={inputClase}
           >
             <option value="">Elegí…</option>
@@ -308,18 +273,32 @@ function Formulario({ id }) {
       </Seccion>
 
       <Seccion titulo="Precio y disponibilidad">
-        <Campo id="precio" etiqueta="Precio (ARS)" error={errores.precio}>
-          <input
-            id="precio"
-            type="number"
-            min="0"
-            step="1"
-            inputMode="numeric"
-            value={form.precio}
-            onChange={(e) => set('precio', e.target.value)}
-            aria-invalid={Boolean(errores.precio)}
-            className={inputClase}
-          />
+        <Campo id="precio" etiqueta="Precio" error={errores.precio}>
+          <div className="flex gap-2">
+            <select
+              value={form.moneda}
+              onChange={(e) => set('moneda', e.target.value)}
+              aria-label="Moneda"
+              className={`${inputBase} w-32 shrink-0`}
+            >
+              {MONEDAS.map((m) => (
+                <option key={m.valor} value={m.valor}>
+                  {m.etiqueta}
+                </option>
+              ))}
+            </select>
+            <input
+              id="precio"
+              type="number"
+              min="0"
+              step={form.moneda === 'ARS' ? '1' : '0.01'}
+              inputMode="decimal"
+              value={form.precio}
+              onChange={(e) => set('precio', e.target.value)}
+              aria-invalid={Boolean(errores.precio)}
+              className={`${inputBase} min-w-0 flex-1`}
+            />
+          </div>
         </Campo>
         <Campo id="disponibilidad" etiqueta="Disponibilidad">
           <select
@@ -336,11 +315,7 @@ function Formulario({ id }) {
           </select>
         </Campo>
         {form.disponibilidad === 'a_pedido' && (
-          <Campo
-            id="tiempoProduccion"
-            etiqueta="Tiempo de producción"
-            error={errores.tiempoProduccion}
-          >
+          <Campo id="tiempoProduccion" etiqueta="Tiempo de producción">
             <input
               id="tiempoProduccion"
               value={form.tiempoProduccion}
@@ -358,6 +333,7 @@ function Formulario({ id }) {
           variantes={form.variantes}
           setVariantes={(v) => set('variantes', v)}
           errores={errores.variantes}
+          moneda={form.moneda}
         />
         {errores.variantes && (
           <MensajeError>Revisá las opciones: {Object.values(errores.variantes)[0]}</MensajeError>
@@ -373,53 +349,25 @@ function Formulario({ id }) {
         />
       </Seccion>
 
-      <Seccion titulo="Publicación">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.visible}
-            onChange={(e) => set('visible', e.target.checked)}
-            className="accent-sumi"
-          />
-          Visible en el catálogo (si no, queda como borrador)
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.destacado}
-            onChange={(e) => set('destacado', e.target.checked)}
-            className="accent-sumi"
-          />
-          Destacado (aparece primero)
-        </label>
-        <Campo
-          id="orden"
-          etiqueta="Orden"
-          error={errores.orden}
-          ayuda={esEdicion ? 'Menor = antes.' : 'Vacío = al final de la lista.'}
-        >
-          <input
-            id="orden"
-            type="number"
-            step="1"
-            value={form.orden}
-            onChange={(e) => set('orden', e.target.value)}
-            className={`${inputBase} w-32`}
-          />
-        </Campo>
-      </Seccion>
-
       {/* Barra de acciones fija abajo (cómoda en el celular). */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-sumi/10 bg-washi/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-6">
-          {mensajeError && (
-            <p className="mr-auto text-sm text-shu" role="alert">
-              {mensajeError}
-            </p>
-          )}
-          {subidasEnCurso && (
-            <p className="mr-auto text-sm text-sumi-soft">Esperando que terminen las subidas…</p>
-          )}
+          <div className="mr-auto text-sm">
+            {mensajeError ? (
+              <p className="text-shu" role="alert">
+                {mensajeError}
+              </p>
+            ) : subidasEnCurso ? (
+              <p className="text-sumi-soft">Esperando que terminen las subidas…</p>
+            ) : faltantes.length === 0 ? (
+              <p className="text-ai">✓ Completo: se publica en el catálogo al guardar.</p>
+            ) : (
+              <p className="text-sumi-soft">
+                Se guarda como <strong>borrador</strong>. Para publicarlo falta:{' '}
+                {faltantes.join(', ')}.
+              </p>
+            )}
+          </div>
           <button type="button" onClick={cancelar} className={botonSecundario}>
             Cancelar
           </button>

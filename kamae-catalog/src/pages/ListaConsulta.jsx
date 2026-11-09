@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import BotonWhatsApp from '../components/BotonWhatsApp.jsx'
 import { useListaConsulta } from '../hooks/useListaConsulta.js'
-import { formatearPrecio } from '../utils/formato.js'
+import { formatearPrecio, totalesPorMoneda } from '../utils/formato.js'
 import { claveItem, listaConsulta } from '../utils/listaConsulta.js'
 import { mensajeLista } from '../utils/whatsapp.js'
 
 export default function ListaConsulta() {
   const items = useListaConsulta()
   const [confirmarVaciar, setConfirmarVaciar] = useState(false)
-  const total = items.reduce((suma, item) => suma + item.precio * item.cantidad, 0)
+  const totales = totalesPorMoneda(items)
 
   if (items.length === 0) {
     return (
@@ -50,7 +50,9 @@ export default function ListaConsulta() {
                 {item.variante && (
                   <p className="text-sm text-sumi-soft">{item.variante}</p>
                 )}
-                <p className="text-sm text-sumi-soft">{formatearPrecio(item.precio)}</p>
+                <p className="text-sm text-sumi-soft">
+                  {formatearPrecio(item.precio, item.moneda)}
+                </p>
               </div>
 
               <div className="flex items-center rounded-sm border border-sumi/20">
@@ -88,7 +90,15 @@ export default function ListaConsulta() {
 
       <div className="mt-6 flex items-baseline justify-between">
         <span className="text-sumi-soft">Total estimado</span>
-        <span className="text-xl">{formatearPrecio(total)}</span>
+        {/* Una línea por moneda: no se suman pesos con dólares. */}
+        <span className="text-right text-xl">
+          {totales.map(({ moneda, total }, i) => (
+            <span key={moneda} className="block">
+              {i > 0 && '+ '}
+              {formatearPrecio(total, moneda)}
+            </span>
+          ))}
+        </span>
       </div>
 
       <BotonWhatsApp

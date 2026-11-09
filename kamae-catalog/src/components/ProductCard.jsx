@@ -32,7 +32,7 @@ export default function ProductCard({ producto }) {
       </h3>
       <p className="mt-1 text-sm text-sumi-soft">
         {min !== max && 'Desde '}
-        {formatearPrecio(min)}
+        {formatearPrecio(min, producto.moneda)}
       </p>
     </Link>
   )

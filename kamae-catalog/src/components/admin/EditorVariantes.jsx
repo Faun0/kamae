@@ -5,7 +5,12 @@ import { MAX_VARIANTES } from '../../utils/constantes.js'
  * Variantes del producto (talles, colores…). Ítem en el form:
  * { key, etiqueta, precio: string ('' = usa el precio del producto), disponible }
  */
-export default function EditorVariantes({ variantes, setVariantes, errores = {} }) {
+export default function EditorVariantes({
+  variantes,
+  setVariantes,
+  errores = {},
+  moneda = 'ARS',
+}) {
   const actualizar = (key, cambios) =>
     setVariantes(variantes.map((v) => (v.key === key ? { ...v, ...cambios } : v)))
 
@@ -33,11 +38,11 @@ export default function EditorVariantes({ variantes, setVariantes, errores = {} 
               <input
                 type="number"
                 min="0"
-                step="1"
-                inputMode="numeric"
+                step={moneda === 'ARS' ? '1' : '0.01'}
+                inputMode="decimal"
                 value={v.precio}
                 onChange={(e) => actualizar(v.key, { precio: e.target.value })}
-                placeholder="Precio (opcional)"
+                placeholder={`Precio ${moneda} (opcional)`}
                 aria-label={`Precio de la opción ${i + 1}`}
                 className={`${inputBase} w-40`}
               />

@@ -7,8 +7,12 @@ export const linkWhatsApp = (mensaje) =>
 
 export const urlProducto = (slug) => `${window.location.origin}/producto/${slug}`
 
-const lineaItem = ({ nombre, variante, precio, cantidad = 1 }) =>
-  [cantidad > 1 ? `${cantidad} × ${nombre}` : nombre, variante, formatearPrecio(precio)]
+const lineaItem = ({ nombre, variante, precio, moneda, cantidad = 1 }) =>
+  [
+    cantidad > 1 ? `${cantidad} × ${nombre}` : nombre,
+    variante,
+    formatearPrecio(precio, moneda),
+  ]
     .filter(Boolean)
     .join(' — ')
 

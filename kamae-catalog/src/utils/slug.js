@@ -9,5 +9,3 @@ export function slugify(texto) {
     .slice(0, 100)
     .replace(/-+$/, '')
 }
-
-export const SLUG_VALIDO = /^[a-z0-9]+(-[a-z0-9]+)*$/

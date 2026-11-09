@@ -6,10 +6,9 @@ import { db } from './db.js'
 const productosRef = collection(db, 'productos')
 const desdeDoc = (doc) => ({ id: doc.id, ...doc.data() })
 
-// Destacados primero, después por `orden`.
+// Más nuevos primero (no hay orden manual: con varios admins se pisarían).
 const compararProductos = (a, b) =>
-  Number(Boolean(b.destacado)) - Number(Boolean(a.destacado)) ||
-  (a.orden ?? Infinity) - (b.orden ?? Infinity)
+  (b.fechaCreacion?.toMillis?.() ?? 0) - (a.fechaCreacion?.toMillis?.() ?? 0)
 
 // El catálogo es chico: se trae completo una vez por sesión y se filtra en memoria
 // (sin lecturas extra por filtro y sin índices compuestos).

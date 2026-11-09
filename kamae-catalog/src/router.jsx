@@ -48,7 +48,8 @@ export const router = createBrowserRouter([
           { path: 'login', lazy: lazyPage(() => import('./pages/Login.jsx')) },
           {
             path: 'admin',
-            // TODO Fase 5: envolver en <AdminRoute> (solo UX; la seguridad real está en las reglas).
+            // Guardia de sesión (solo UX; la seguridad real está en firestore.rules).
+            lazy: lazyPage(() => import('./components/admin/AdminLayout.jsx')),
             children: [
               {
                 index: true,

@@ -1,15 +1,463 @@
-import { useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import EditorImagenes from '../../components/admin/EditorImagenes.jsx'
+import EditorVariantes from '../../components/admin/EditorVariantes.jsx'
+import {
+  botonPrimario,
+  botonSecundario,
+  etiquetaClase,
+  inputBase,
+  inputClase,
+} from '../../components/admin/estilos.js'
+import {
+  actualizarProducto,
+  crearProducto,
+  obtenerProducto,
+  siguienteOrden,
+  slugDisponible,
+} from '../../firebase/productosAdmin.js'
+import { borrarImagenPorToken } from '../../utils/cloudinarySubida.js'
+import { CATEGORIAS, DISCIPLINAS, DISPONIBILIDAD } from '../../utils/constantes.js'
+import { SLUG_VALIDO, slugify } from '../../utils/slug.js'
 
-// Fase 5: formulario compartido entre /admin/nuevo y /admin/editar/:id.
+const FORM_VACIO = {
+  nombre: '',
+  slug: '',
+  descripcion: '',
+  disciplina: [],
+  categoria: '',
+  precio: '',
+  disponibilidad: 'disponible',
+  tiempoProduccion: '',
+  variantes: [],
+  visible: false,
+  destacado: false,
+  orden: '',
+  imagenes: [],
+}
+
+// Firestore → estado del formulario (números como string, keys locales para listas).
+function aFormulario(p) {
+  return {
+    ...FORM_VACIO,
+    ...p,
+    precio: String(p.precio ?? ''),
+    orden: String(p.orden ?? ''),
+    variantes: (p.variantes ?? []).map((v) => ({
+      key: crypto.randomUUID(),
+      etiqueta: v.etiqueta ?? '',
+      precio: v.precio == null ? '' : String(v.precio),
+      disponible: v.disponible !== false,
+    })),
+    imagenes: (p.imagenes ?? []).map((i) => ({ key: crypto.randomUUID(), alt: '', ...i })),
+  }
+}
+
+// Estado del formulario → documento con EXACTAMENTE los campos que validan las reglas
+// (sin fechas ni orden: los agrega productosAdmin / el submit).
+function aFirestore(f) {
+  return {
+    nombre: f.nombre.trim(),
+    slug: f.slug,
+    descripcion: f.descripcion.trim(),
+    disciplina: f.disciplina,
+    categoria: f.categoria,
+    precio: Number(f.precio),
+    moneda: 'ARS',
+    disponibilidad: f.disponibilidad,
+    tiempoProduccion: f.disponibilidad === 'a_pedido' ? f.tiempoProduccion.trim() : '',
+    variantes: f.variantes.map((v) => ({
+      etiqueta: v.etiqueta.trim(),
+      disponible: v.disponible,
+      ...(v.precio !== '' && { precio: Number(v.precio) }),
+    })),
+    visible: f.visible,
+    destacado: f.destacado,
+    imagenes: f.imagenes.map(({ url, publicId, alt }) => ({
+      url,
+      publicId,
+      alt: alt.trim(),
+    })),
+  }
+}
+
+const esPrecioValido = (valor) => valor !== '' && Number.isFinite(Number(valor)) && Number(valor) >= 0
+
+function validar(f) {
+  const e = {}
+  if (!f.nombre.trim()) e.nombre = 'Obligatorio.'
+  else if (f.nombre.trim().length > 120) e.nombre = 'Máximo 120 caracteres.'
+  if (!SLUG_VALIDO.test(f.slug)) e.slug = 'Solo minúsculas, números y guiones (ej. shinai-38).'
+  if (f.descripcion.length > 5000) e.descripcion = 'Máximo 5000 caracteres.'
+  if (f.disciplina.length === 0) e.disciplina = 'Elegí al menos una.'
+  if (!f.categoria) e.categoria = 'Elegí una categoría.'
+  if (!esPrecioValido(f.precio)) e.precio = 'Ingresá un precio válido.'
+  if (f.disponibilidad === 'a_pedido' && f.tiempoProduccion.trim().length > 50) {
+    e.tiempoProduccion = 'Máximo 50 caracteres.'
+  }
+  if (f.orden !== '' && !Number.isFinite(Number(f.orden))) e.orden = 'Debe ser un número.'
+
+  const variantes = {}
+  for (const v of f.variantes) {
+    if (!v.etiqueta.trim()) variantes[v.key] = 'Falta la etiqueta.'
+    else if (v.precio !== '' && !esPrecioValido(v.precio)) variantes[v.key] = 'Precio inválido.'
+  }
+  if (Object.keys(variantes).length) e.variantes = variantes
+  return e
+}
+
 export default function ProductoForm() {
   const { id } = useParams()
+  // key: pasar de /admin/editar/a a /admin/nuevo reinicia el formulario.
+  return <Formulario key={id ?? 'nuevo'} id={id} />
+}
+
+function Formulario({ id }) {
   const esEdicion = Boolean(id)
+  const navigate = useNavigate()
+  const [form, setForm] = useState(esEdicion ? null : FORM_VACIO)
+  const [errorCarga, setErrorCarga] = useState(null)
+  const [slugManual, setSlugManual] = useState(esEdicion)
+  const [errores, setErrores] = useState({})
+  const [subiendo, setSubiendo] = useState([])
+  const [guardando, setGuardando] = useState(false)
+  const [errorGuardar, setErrorGuardar] = useState(null)
+
+  useEffect(() => {
+    if (!esEdicion) return
+    let activo = true
+    obtenerProducto(id)
+      .then((p) => {
+        if (!activo) return
+        if (p) setForm(aFormulario(p))
+        else setErrorCarga('El producto no existe (¿lo borraron?).')
+      })
+      .catch((e) => activo && setErrorCarga(e.message))
+    return () => {
+      activo = false
+    }
+  }, [id, esEdicion])
+
+  if (errorCarga) {
+    return (
+      <div className="py-8">
+        <p className="text-shu">{errorCarga}</p>
+        <Link to="/admin" className="mt-4 inline-block underline underline-offset-4">
+          Volver a la lista
+        </Link>
+      </div>
+    )
+  }
+  if (!form) return <p className="py-8 text-sumi-soft">Cargando producto…</p>
+
+  // Al editar un campo se borra su error (los demás se mantienen hasta el próximo guardado).
+  function limpiarError(...campos) {
+    setErrores((e) => {
+      if (!campos.some((c) => c in e)) return e
+      const copia = { ...e }
+      campos.forEach((c) => delete copia[c])
+      return copia
+    })
+  }
+
+  function set(campo, valor) {
+    setForm((f) => ({
+      ...f,
+      [campo]: typeof valor === 'function' ? valor(f[campo]) : valor,
+    }))
+    limpiarError(campo)
+  }
+
+  function cambiarNombre(nombre) {
+    setForm((f) => ({ ...f, nombre, slug: slugManual ? f.slug : slugify(nombre) }))
+    limpiarError('nombre', ...(slugManual ? [] : ['slug']))
+  }
+
+  function alternarDisciplina(valor) {
+    set('disciplina', (actual) =>
+      actual.includes(valor) ? actual.filter((d) => d !== valor) : [...actual, valor],
+    )
+  }
+
+  function cancelar() {
+    // Las imágenes subidas en esta edición y no guardadas se borran de Cloudinary.
+    form.imagenes.forEach((i) => borrarImagenPorToken(i.deleteToken))
+    navigate('/admin')
+  }
+
+  async function guardar(event) {
+    event.preventDefault()
+    setErrorGuardar(null)
+    const nuevosErrores = validar(form)
+    setErrores(nuevosErrores)
+    if (Object.keys(nuevosErrores).length) {
+      return
+    }
+
+    setGuardando(true)
+    try {
+      if (!(await slugDisponible(form.slug, id))) {
+        setErrores({ slug: 'Ya hay otro producto con este slug.' })
+        return
+      }
+      const datos = aFirestore(form)
+      const orden = form.orden === '' ? await siguienteOrden() : Number(form.orden)
+      if (esEdicion) await actualizarProducto(id, { ...datos, orden })
+      else await crearProducto({ ...datos, orden })
+      navigate('/admin')
+    } catch (e) {
+      setErrorGuardar(
+        e.code === 'permission-denied'
+          ? 'Firestore rechazó los datos (sin permisos o formato inválido).'
+          : `No se pudo guardar: ${e.message}`,
+      )
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const subidasEnCurso = subiendo.some((s) => !s.error)
+  const mensajeError =
+    errorGuardar ?? (Object.keys(errores).length > 0 ? 'Revisá los campos marcados.' : null)
 
   return (
-    <section>
-      <h1 className="font-serif text-2xl">
-        {esEdicion ? 'Editar producto' : 'Nuevo producto'}
+    <form onSubmit={guardar} noValidate className="pb-24">
+      <title>{`${esEdicion ? 'Editar' : 'Nuevo'} producto · Admin Kamae`}</title>
+      <Link to="/admin" className="text-sm text-sumi-soft hover:text-sumi">
+        ← Volver a la lista
+      </Link>
+      <h1 className="mt-4 font-serif text-2xl">
+        {esEdicion ? `Editar: ${form.nombre || 'producto'}` : 'Nuevo producto'}
       </h1>
+
+      <Seccion titulo="Información">
+        <Campo id="nombre" etiqueta="Nombre" error={errores.nombre}>
+          <input
+            id="nombre"
+            value={form.nombre}
+            onChange={(e) => cambiarNombre(e.target.value)}
+            maxLength={120}
+            aria-invalid={Boolean(errores.nombre)}
+            className={inputClase}
+          />
+        </Campo>
+        <Campo
+          id="slug"
+          etiqueta="Slug (URL)"
+          error={errores.slug}
+          ayuda={`kamae.web.app/producto/${form.slug || '…'}`}
+        >
+          <input
+            id="slug"
+            value={form.slug}
+            onChange={(e) => {
+              setSlugManual(true)
+              set('slug', e.target.value.toLowerCase())
+            }}
+            maxLength={100}
+            aria-invalid={Boolean(errores.slug)}
+            className={`${inputClase} font-mono`}
+          />
+        </Campo>
+        <Campo id="descripcion" etiqueta="Descripción" error={errores.descripcion}>
+          <textarea
+            id="descripcion"
+            rows={5}
+            value={form.descripcion}
+            onChange={(e) => set('descripcion', e.target.value)}
+            maxLength={5000}
+            className={inputClase}
+          />
+        </Campo>
+      </Seccion>
+
+      <Seccion titulo="Clasificación">
+        <fieldset className="min-w-0">
+          <legend className={etiquetaClase}>Disciplina</legend>
+          <div className="flex gap-6">
+            {DISCIPLINAS.map((d) => (
+              <label key={d.valor} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.disciplina.includes(d.valor)}
+                  onChange={() => alternarDisciplina(d.valor)}
+                  className="accent-sumi"
+                />
+                {d.etiqueta}
+              </label>
+            ))}
+          </div>
+          {errores.disciplina && <MensajeError>{errores.disciplina}</MensajeError>}
+        </fieldset>
+        <Campo id="categoria" etiqueta="Categoría" error={errores.categoria}>
+          <select
+            id="categoria"
+            value={form.categoria}
+            onChange={(e) => set('categoria', e.target.value)}
+            aria-invalid={Boolean(errores.categoria)}
+            className={inputClase}
+          >
+            <option value="">Elegí…</option>
+            {CATEGORIAS.map((c) => (
+              <option key={c.valor} value={c.valor}>
+                {c.etiqueta}
+              </option>
+            ))}
+          </select>
+        </Campo>
+      </Seccion>
+
+      <Seccion titulo="Precio y disponibilidad">
+        <Campo id="precio" etiqueta="Precio (ARS)" error={errores.precio}>
+          <input
+            id="precio"
+            type="number"
+            min="0"
+            step="1"
+            inputMode="numeric"
+            value={form.precio}
+            onChange={(e) => set('precio', e.target.value)}
+            aria-invalid={Boolean(errores.precio)}
+            className={inputClase}
+          />
+        </Campo>
+        <Campo id="disponibilidad" etiqueta="Disponibilidad">
+          <select
+            id="disponibilidad"
+            value={form.disponibilidad}
+            onChange={(e) => set('disponibilidad', e.target.value)}
+            className={inputClase}
+          >
+            {DISPONIBILIDAD.map((d) => (
+              <option key={d.valor} value={d.valor}>
+                {d.etiqueta}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        {form.disponibilidad === 'a_pedido' && (
+          <Campo
+            id="tiempoProduccion"
+            etiqueta="Tiempo de producción"
+            error={errores.tiempoProduccion}
+          >
+            <input
+              id="tiempoProduccion"
+              value={form.tiempoProduccion}
+              onChange={(e) => set('tiempoProduccion', e.target.value)}
+              placeholder="Ej. 7-10 días"
+              maxLength={50}
+              className={inputClase}
+            />
+          </Campo>
+        )}
+      </Seccion>
+
+      <Seccion titulo="Opciones (talles, colores…)" ancho>
+        <EditorVariantes
+          variantes={form.variantes}
+          setVariantes={(v) => set('variantes', v)}
+          errores={errores.variantes}
+        />
+        {errores.variantes && (
+          <MensajeError>Revisá las opciones: {Object.values(errores.variantes)[0]}</MensajeError>
+        )}
+      </Seccion>
+
+      <Seccion titulo="Imágenes" ancho>
+        <EditorImagenes
+          imagenes={form.imagenes}
+          setImagenes={(v) => set('imagenes', v)}
+          subiendo={subiendo}
+          setSubiendo={setSubiendo}
+        />
+      </Seccion>
+
+      <Seccion titulo="Publicación">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.visible}
+            onChange={(e) => set('visible', e.target.checked)}
+            className="accent-sumi"
+          />
+          Visible en el catálogo (si no, queda como borrador)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.destacado}
+            onChange={(e) => set('destacado', e.target.checked)}
+            className="accent-sumi"
+          />
+          Destacado (aparece primero)
+        </label>
+        <Campo
+          id="orden"
+          etiqueta="Orden"
+          error={errores.orden}
+          ayuda={esEdicion ? 'Menor = antes.' : 'Vacío = al final de la lista.'}
+        >
+          <input
+            id="orden"
+            type="number"
+            step="1"
+            value={form.orden}
+            onChange={(e) => set('orden', e.target.value)}
+            className={`${inputBase} w-32`}
+          />
+        </Campo>
+      </Seccion>
+
+      {/* Barra de acciones fija abajo (cómoda en el celular). */}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-sumi/10 bg-washi/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-6">
+          {mensajeError && (
+            <p className="mr-auto text-sm text-shu" role="alert">
+              {mensajeError}
+            </p>
+          )}
+          {subidasEnCurso && (
+            <p className="mr-auto text-sm text-sumi-soft">Esperando que terminen las subidas…</p>
+          )}
+          <button type="button" onClick={cancelar} className={botonSecundario}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={guardando || subidasEnCurso}
+            className={botonPrimario}
+          >
+            {guardando ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+function Seccion({ titulo, ancho = false, children }) {
+  return (
+    <section className="mt-8 border-t border-sumi/10 pt-6">
+      <h2 className="font-serif text-lg">{titulo}</h2>
+      <div className={`mt-4 space-y-4 ${ancho ? '' : 'max-w-xl'}`}>{children}</div>
     </section>
   )
+}
+
+function Campo({ id, etiqueta, error, ayuda, children }) {
+  return (
+    <div>
+      <label htmlFor={id} className={etiquetaClase}>
+        {etiqueta}
+      </label>
+      {children}
+      {ayuda && !error && <p className="mt-1 text-xs text-sumi-soft">{ayuda}</p>}
+      {error && <MensajeError>{error}</MensajeError>}
+    </div>
+  )
+}
+
+function MensajeError({ children }) {
+  return <p className="mt-1 text-sm text-shu">{children}</p>
 }

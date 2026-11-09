@@ -25,6 +25,11 @@ export function obtenerCatalogo() {
   return catalogoPromise
 }
 
+/** Descarta el catálogo en memoria (lo llama el admin después de escribir). */
+export function invalidarCatalogo() {
+  catalogoPromise = null
+}
+
 export async function obtenerProductoPorSlug(slug) {
   // Si el catálogo ya se cargó, no se gasta otra lectura.
   if (catalogoPromise) {

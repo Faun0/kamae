@@ -15,6 +15,10 @@ export const CATEGORIAS = [
   { valor: 'accesorios', etiqueta: 'Accesorios' },
 ]
 
+// Límites que también valida firestore.rules.
+export const MAX_IMAGENES = 10
+export const MAX_VARIANTES = 30
+
 export const DISPONIBILIDAD = [
   { valor: 'disponible', etiqueta: 'Disponible' },
   { valor: 'agotado', etiqueta: 'Agotado' },

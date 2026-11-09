@@ -6,8 +6,9 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
 - React + Vite, Tailwind CSS (estética minimalista Dojo/Zen, mobile-first), ESLint, React Router.
 - Firebase: Firestore (inventario), Auth (solo admin), Hosting.
 - Imágenes: **Cloudinary** (plan gratis; Firebase Storage exigiría Blaze). Subida desde el navegador con un *upload preset* sin firma; en Firestore se guarda `publicId` + `url`. URLs con `f_auto,q_auto` vía `src/utils/cloudinary.js`.
-  - El preset debe restringir: carpeta `kamae/productos`, formatos de imagen, tamaño máx. y transformación entrante (ej. `c_limit,w_1600`). Cualquiera que vea el preset podría subir archivos: es un riesgo aceptado (no expone ni borra lo existente).
-  - **Pendiente Fase 5**: borrar en Cloudinary requiere firma con el API secret (no puede ir en el cliente, y Cloud Functions requieren Blaze). Opciones: `delete_token` (solo sirve 10 min post-subida), limpieza manual/periódica de huérfanos con un script local, o Blaze.
+  - Preset `kamae_productos` (`VITE_CLOUDINARY_UPLOAD_PRESET`): **Unsigned**, carpeta `kamae/productos`, formatos jpg/png/webp, tamaño máx., transformación entrante `c_limit,w_1600`, **"Return delete token" activado**. Cualquiera que vea el preset podría subir archivos: riesgo aceptado (no expone ni borra lo existente).
+  - Subida: `utils/cloudinarySubida.js` comprime en el cliente a WebP (máx. 1600px, `browser-image-compression` con import dinámico) y sube con el preset.
+  - Borrado (decidido en Fase 5): borrar en Cloudinary requiere el API secret (no puede ir en el cliente; Functions requieren Blaze). Se usa el `delete_token` (~10 min): al quitar una imagen recién subida o al cancelar el formulario se borra. Las imágenes ya guardadas que se quitan, y las de productos borrados, **quedan huérfanas** en Cloudinary. Pendiente: script local de limpieza de huérfanos (compara `publicId` en Firestore vs carpeta en Cloudinary; usa el API secret solo en la máquina del admin).
 
 ## Firebase en el código
 - `src/firebase/app.js`: `initializeApp`. En dev exige un proyecto `demo-*` (nunca toca producción).
@@ -15,6 +16,7 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
 - `src/firebase/admin.js`: Firestore completo + Auth. Importar **solo** desde páginas lazy de `/login` y `/admin`.
 - `src/firebase/analytics.js`: `registrarEvento()`, carga Analytics bajo demanda solo en producción.
 - `src/firebase/productos.js`: el catálogo público se trae **completo una vez por sesión** (`visible == true`) y se filtra/ordena en memoria (destacados primero, luego `orden`); sin índices compuestos. Los datos llegan por **loaders de React Router** (`router.jsx`), no por `useEffect`. Filtros en la URL (`?disciplina=&categoria=`).
+- Admin: `firebase/sesion.js` (store de sesión: usuario + `esAdmin` leyendo `admins/{uid}`) + `hooks/useSesion.js`; `components/admin/AdminLayout.jsx` es la guardia lazy de `/admin` (redirige a `/login`, muestra "Sin acceso" si no es admin). CRUD en `firebase/productosAdmin.js` (tabla con `onSnapshot`; tras escribir llama `invalidarCatalogo()`). El formulario arma el doc con **exactamente** los campos que validan las reglas (`aFirestore` en `ProductoForm.jsx`).
 - Lista de consulta: store sobre localStorage (`utils/listaConsulta.js`) + `useSyncExternalStore` (`hooks/useListaConsulta.js`); sin Context.
 - Dev: `npm run emulators` (Auth 9099, Firestore 8080, UI 4000) y `npm run seed` (admin `admin@kamae.test` / `kamae123`, uid `admin-dev`, + productos de prueba con un borrador). `.env.development` se commitea (sin secretos); `.env` con la config real no.
 
@@ -77,8 +79,8 @@ No usar la palabra "Armas" como categoría.
 3. ✅ Firebase: SDK, `.env`, Emulators, decidir hosting de imágenes (→ Cloudinary)
 3.5. ✅ Reglas de seguridad Firestore + pruebas en emulador (Storage no aplica: imágenes en Cloudinary)
 4. ✅ Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics (falta: probar con imágenes reales de Cloudinary)
-5. Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión
-6. Deploy: build, rewrites, verificar que el site ID `kamae` esté libre, GitHub Actions
+5. ✅ Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión (falta: probar la subida real cuando exista el preset en Cloudinary)
+6. Deploy: build, rewrites, verificar que el site ID `kamae` esté libre, GitHub Actions. En Firebase Console: crear el usuario admin + doc `admins/{uid}`, y en Auth → Configuración desactivar el alta de usuarios (sign-up) desde el cliente.
 7. QA en móviles reales + Lighthouse
 
 ## Deuda técnica conocida

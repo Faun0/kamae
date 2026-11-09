@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// PROVISORIO (Fase 3): lectura pública de productos visibles, toda escritura denegada.
+// El seed usa el Admin SDK, que no pasa por estas reglas.
+// Fase 3.5: reglas definitivas con escritura solo para el UID admin + tests en emulador.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /productos/{id} {
+      allow read: if resource.data.visible == true;
+      allow write: if false;
+    }
+  }
+}

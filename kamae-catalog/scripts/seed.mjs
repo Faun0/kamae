@@ -23,6 +23,14 @@ const ADMIN = {
   displayName: 'Admin Kamae',
 }
 
+// Imágenes de ejemplo que trae toda cuenta nueva de Cloudinary (placeholder hasta tener fotos reales).
+const CLOUD_NAME = 'uesxf3on'
+const img = (publicId, alt) => ({
+  publicId,
+  url: `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${publicId}`,
+  alt,
+})
+
 const productos = [
   {
     nombre: 'Shinai Dobari 3.8',
@@ -37,6 +45,11 @@ const productos = [
       { etiqueta: '3.7 (escuela secundaria)', disponible: true },
       { etiqueta: '3.8 (adultos)', disponible: true },
       { etiqueta: '3.9 (adultos, largo)', precio: 70000, disponible: false },
+    ],
+    imagenes: [
+      img('cld-sample-4', 'Shinai, vista general'),
+      img('cld-sample-5', 'Shinai, detalle de la tsuka'),
+      img('samples/look-up', 'Shinai, detalle del sakigawa'),
     ],
     visible: true,
     destacado: true,
@@ -69,6 +82,7 @@ const productos = [
       { etiqueta: 'Negro mate', disponible: true },
       { etiqueta: 'Bronce envejecido', precio: 28000, disponible: true },
     ],
+    imagenes: [img('samples/ecommerce/analog-classic', 'Tsuba negro mate')],
     visible: true,
     destacado: true,
     orden: 3,
@@ -83,6 +97,7 @@ const productos = [
     disponibilidad: 'agotado',
     tiempoProduccion: '',
     variantes: [],
+    imagenes: [img('samples/landscapes/architecture-signs', 'Iaito 2.45 shaku')],
     visible: true,
     destacado: false,
     orden: 4,
@@ -120,9 +135,9 @@ async function seedProductos() {
   const batch = db.batch()
   for (const producto of productos) {
     batch.set(coleccion.doc(), {
+      imagenes: [], // el bokken queda sin imagen a propósito (prueba el placeholder)
       ...producto,
       moneda: 'ARS',
-      imagenes: [],
       fechaCreacion: FieldValue.serverTimestamp(),
       fechaActualizacion: FieldValue.serverTimestamp(),
     })

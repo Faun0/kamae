@@ -1,19 +1,34 @@
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router-dom'
+import NotFound from '../pages/NotFound.jsx'
 
-// Se muestra si una ruta falla al renderizar o al cargar (p. ej. un chunk lazy).
+// Errores de render o de loaders (p. ej. producto inexistente, Firestore caído, chunk lazy que no carga).
 export default function RouteError() {
   const error = useRouteError()
-  const detalle = isRouteErrorResponse(error)
-    ? `${error.status} ${error.statusText}`
-    : null
+
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return <NotFound mensaje={typeof error.data === 'string' ? error.data : undefined} />
+  }
+
+  if (import.meta.env.DEV) console.error(error)
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
+    <section className="flex flex-col items-center gap-4 py-16 text-center">
       <h1 className="font-serif text-2xl">Algo salió mal</h1>
-      {detalle && <p className="text-sm text-sumi-soft">{detalle}</p>}
-      <Link to="/" className="text-shu underline underline-offset-4">
-        Volver al catálogo
-      </Link>
-    </div>
+      <p className="text-sm text-sumi-soft">
+        Revisá tu conexión e intentá de nuevo en unos segundos.
+      </p>
+      <div className="flex gap-6">
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="text-shu underline underline-offset-4"
+        >
+          Reintentar
+        </button>
+        <Link to="/" className="text-sumi-soft underline underline-offset-4">
+          Volver al catálogo
+        </Link>
+      </div>
+    </section>
   )
 }

@@ -5,7 +5,18 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
 ## Stack
 - React + Vite, Tailwind CSS (estética minimalista Dojo/Zen, mobile-first), ESLint, React Router.
 - Firebase: Firestore (inventario), Auth (solo admin), Hosting.
-- Imágenes: **DECISIÓN PENDIENTE** — Firebase Storage requiere plan Blaze desde feb-2026. Opciones: (a) Blaze + alertas de presupuesto, (b) Cloudinary/ImageKit gratis guardando solo la URL en Firestore, (c) imágenes estáticas en `/public`. Preguntar antes de implementar la subida.
+- Imágenes: **Cloudinary** (plan gratis; Firebase Storage exigiría Blaze). Subida desde el navegador con un *upload preset* sin firma; en Firestore se guarda `publicId` + `url`. URLs con `f_auto,q_auto` vía `src/utils/cloudinary.js`.
+  - El preset debe restringir: carpeta `kamae/productos`, formatos de imagen, tamaño máx. y transformación entrante (ej. `c_limit,w_1600`). Cualquiera que vea el preset podría subir archivos: es un riesgo aceptado (no expone ni borra lo existente).
+  - **Pendiente Fase 5**: borrar en Cloudinary requiere firma con el API secret (no puede ir en el cliente, y Cloud Functions requieren Blaze). Opciones: `delete_token` (solo sirve 10 min post-subida), limpieza manual/periódica de huérfanos con un script local, o Blaze.
+
+## Firebase en el código
+- `src/firebase/app.js`: `initializeApp`. En dev exige un proyecto `demo-*` (nunca toca producción).
+- `src/firebase/db.js`: Firestore **lite** para el catálogo público (solo `getDocs`/`getDoc`, bundle chico).
+- `src/firebase/admin.js`: Firestore completo + Auth. Importar **solo** desde páginas lazy de `/login` y `/admin`.
+- `src/firebase/analytics.js`: `registrarEvento()`, carga Analytics bajo demanda solo en producción.
+- `src/firebase/productos.js`: el catálogo público se trae **completo una vez por sesión** (`visible == true`) y se filtra/ordena en memoria (destacados primero, luego `orden`); sin índices compuestos. Los datos llegan por **loaders de React Router** (`router.jsx`), no por `useEffect`. Filtros en la URL (`?disciplina=&categoria=`).
+- Lista de consulta: store sobre localStorage (`utils/listaConsulta.js`) + `useSyncExternalStore` (`hooks/useListaConsulta.js`); sin Context.
+- Dev: `npm run emulators` (Auth 9099, Firestore 8080, UI 4000) y `npm run seed` (admin `admin@kamae.test` / `kamae123`, uid `admin-dev`, + productos de prueba con un borrador). `.env.development` se commitea (sin secretos); `.env` con la config real no.
 
 ## Convenciones
 - Idioma del código: nombres de dominio en español (productos, precio, disponibilidad), código técnico en inglés está bien.
@@ -26,7 +37,7 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
   variantes: [{ etiqueta, precio?, disponible }],  // talles shinai, colores tsuba, etc.
   visible: Boolean,                // publicado vs borrador (distinto de stock)
   destacado: Boolean, orden: Number,
-  imagenes: [{ url, path, alt }],  // path permite borrar el archivo
+  imagenes: [{ url, publicId, alt }],  // publicId de Cloudinary (transformaciones y borrado)
   fechaCreacion, fechaActualizacion // serverTimestamp()
 }
 ```
@@ -35,6 +46,7 @@ No usar la palabra "Armas" como categoría.
 ## Rutas
 - `/` catálogo (grilla + filtros por disciplina y categoría; solo `visible == true`)
 - `/producto/:slug` detalle con selector de variante y CTA WhatsApp
+- `/consulta` lista de consulta (carrito sin pago)
 - `/login`
 - `/admin` tabla CRUD (protegida)
 - `/admin/nuevo` y `/admin/editar/:id` (mismo formulario reutilizado)
@@ -44,7 +56,7 @@ No usar la palabra "Armas" como categoría.
 ## Seguridad (crítico)
 - La ruta privada en React es solo UX. La seguridad real está en las reglas.
 - Firestore: lectura pública solo de productos `visible == true`; escritura solo si `request.auth.uid` es el UID admin. NO usar `request.auth != null` como criterio de admin (cualquiera puede crearse una cuenta).
-- Si se usa Storage: misma regla de admin + límite de tamaño (<2MB) y `contentType` image/*.
+- Imágenes en Cloudinary: las restricciones van en el upload preset (ver Stack); no hay reglas de Storage.
 
 ## WhatsApp
 - `https://wa.me/${VITE_WHATSAPP}?text=${encodeURIComponent(msg)}`
@@ -59,9 +71,9 @@ No usar la palabra "Armas" como categoría.
 ## Roadmap
 1. ✅ Setup Vite + React + Tailwind + ESLint
 2. ✅ Estructura base, React Router, Git
-3. Firebase: SDK, `.env`, Emulators, decidir hosting de imágenes
+3. ✅ Firebase: SDK, `.env`, Emulators, decidir hosting de imágenes (→ Cloudinary)
 3.5. Reglas de seguridad Firestore/Storage + pruebas en emulador
-4. Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics
+4. ✅ Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics (falta: probar con imágenes reales de Cloudinary)
 5. Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión
 6. Deploy: build, rewrites, verificar que el site ID `kamae` esté libre, GitHub Actions
 7. QA en móviles reales + Lighthouse

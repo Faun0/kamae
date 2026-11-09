@@ -6,7 +6,7 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
 - React + Vite, Tailwind CSS (estética minimalista Dojo/Zen, mobile-first), ESLint, React Router.
 - Firebase: Firestore (inventario), Auth (solo admin), Hosting.
 - Imágenes: **Cloudinary** (plan gratis; Firebase Storage exigiría Blaze). Subida desde el navegador con un *upload preset* sin firma; en Firestore se guarda `publicId` + `url`. URLs con `f_auto,q_auto` vía `src/utils/cloudinary.js`.
-  - Preset `kamae_productos` (`VITE_CLOUDINARY_UPLOAD_PRESET`): **Unsigned**, carpeta `kamae/productos`, formatos jpg/png/webp, tamaño máx., transformación entrante `c_limit,w_1600`, **"Return delete token" activado**. Cualquiera que vea el preset podría subir archivos: riesgo aceptado (no expone ni borra lo existente).
+  - Preset `kamae_productos` (`VITE_CLOUDINARY_UPLOAD_PRESET`), ya creado y verificado: **Unsigned**, asset folder `kamae/productos`, public ID auto-generado (aleatorio), formatos permitidos jpg/png/**webp** (webp es obligatorio: el cliente convierte todo a WebP), **"Return delete token" activado**. Cualquiera que vea el preset podría subir archivos: riesgo aceptado (no expone ni borra lo existente).
   - Subida: `utils/cloudinarySubida.js` comprime en el cliente a WebP (máx. 1600px, `browser-image-compression` con import dinámico) y sube con el preset.
   - Borrado (decidido en Fase 5): borrar en Cloudinary requiere el API secret (no puede ir en el cliente; Functions requieren Blaze). Se usa el `delete_token` (~10 min): al quitar una imagen recién subida o al cancelar el formulario se borra. Las imágenes ya guardadas que se quitan, y las de productos borrados, **quedan huérfanas** en Cloudinary. Pendiente: script local de limpieza de huérfanos (compara `publicId` en Firestore vs carpeta en Cloudinary; usa el API secret solo en la máquina del admin).
 
@@ -82,8 +82,8 @@ No usar la palabra "Armas" como categoría.
 2. ✅ Estructura base, React Router, Git
 3. ✅ Firebase: SDK, `.env`, Emulators, decidir hosting de imágenes (→ Cloudinary)
 3.5. ✅ Reglas de seguridad Firestore + pruebas en emulador (Storage no aplica: imágenes en Cloudinary)
-4. ✅ Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics (falta: probar con imágenes reales de Cloudinary)
-5. ✅ Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión (falta: probar la subida real cuando exista el preset en Cloudinary)
+4. ✅ Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics
+5. ✅ Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión. Subida real verificada (JPEG 379 KB → WebP 1600 px, 64 KB) y borrado por delete token al quitar/cancelar.
 6. Deploy: build, rewrites, verificar que el site ID `kamae` esté libre, GitHub Actions. En Firebase Console: crear el usuario admin + doc `admins/{uid}`, y en Auth → Configuración desactivar el alta de usuarios (sign-up) desde el cliente.
 7. QA en móviles reales + Lighthouse
 

@@ -1,5 +1,7 @@
+import { useSyncExternalStore } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useListaConsulta } from '../hooks/useListaConsulta.js'
+import { marcaAdmin } from '../utils/marcaAdmin.js'
 
 const linkClass = ({ isActive }) =>
   `flex items-center gap-1.5 text-sm tracking-wide transition-colors ${
@@ -9,6 +11,11 @@ const linkClass = ({ isActive }) =>
 export default function Navbar() {
   const items = useListaConsulta()
   const cantidad = items.reduce((total, item) => total + item.cantidad, 0)
+  const esAdmin = useSyncExternalStore(
+    marcaAdmin.subscribe,
+    marcaAdmin.getSnapshot,
+    marcaAdmin.getSnapshot,
+  )
 
   return (
     <header className="sticky top-0 z-10 border-b border-sumi/10 bg-washi/90 backdrop-blur">
@@ -21,7 +28,7 @@ export default function Navbar() {
             構え
           </span>
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-5 sm:gap-6">
           <NavLink to="/" end className={linkClass}>
             Catálogo
           </NavLink>
@@ -36,6 +43,12 @@ export default function Navbar() {
               </span>
             )}
           </NavLink>
+          {/* Solo con sesión de admin en este navegador (ver utils/marcaAdmin.js). */}
+          {esAdmin && (
+            <NavLink to="/admin" className={linkClass}>
+              Panel
+            </NavLink>
+          )}
         </div>
       </nav>
     </header>

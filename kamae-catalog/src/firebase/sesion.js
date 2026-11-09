@@ -3,12 +3,15 @@
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { adminDb, auth } from './admin.js'
+import { marcaAdmin } from '../utils/marcaAdmin.js'
 
 let estado = { cargando: true, usuario: null, esAdmin: false }
 const listeners = new Set()
 
 function emitir(nuevo) {
   estado = nuevo
+  // Mantiene sincronizado el link "Panel" del header público.
+  if (!nuevo.cargando) marcaAdmin.set(nuevo.esAdmin)
   listeners.forEach((listener) => listener())
 }
 

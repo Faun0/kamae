@@ -38,6 +38,7 @@ const productoValido = (cambios = {}) => ({
   variantes: [{ etiqueta: '3.8', disponible: true }],
   visible: true,
   imagenes: [{ url: 'https://example.com/a.webp', publicId: 'kamae/a', alt: '' }],
+  whatsapp: '5493511234567',
   fechaCreacion: serverTimestamp(),
   fechaActualizacion: serverTimestamp(),
   ...cambios,
@@ -162,6 +163,10 @@ describe('validación del esquema (aun siendo admin)', () => {
     'disponibilidad inválida': { disponibilidad: 'quizas' },
     'disciplina inválida': { disciplina: ['kendo', 'judo'] },
     'nombre vacío (incluso en borrador)': { nombre: '', visible: false },
+    'whatsapp sin 549': { whatsapp: '3511234567' },
+    'whatsapp con +': { whatsapp: '+5493511234567' },
+    'whatsapp con dígitos de menos': { whatsapp: '549351123456' },
+    'whatsapp numérico en vez de texto': { whatsapp: 5493511234567 },
     'campos eliminados del modelo (destacado)': { destacado: true },
     'campos eliminados del modelo (orden)': { orden: 1 },
     'slug con mayúsculas/espacios': { slug: 'Shinai de Prueba' },
@@ -193,6 +198,7 @@ describe('validación del esquema (aun siendo admin)', () => {
     'sin categoría': { categoria: '' },
     'sin precio': { precio: null },
     'sin imágenes': { imagenes: [] },
+    'sin WhatsApp': { whatsapp: '' },
   }
 
   for (const [caso, cambios] of Object.entries(incompletos)) {
@@ -209,6 +215,7 @@ describe('validación del esquema (aun siendo admin)', () => {
       categoria: '',
       precio: null,
       imagenes: [],
+      whatsapp: '',
     })
     await assertSucceeds(setDoc(doc(admin(), 'productos', 'nuevo'), borrador))
   })

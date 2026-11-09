@@ -31,6 +31,26 @@ const FORM_VACIO = {
   tiempoProduccion: '',
   variantes: [],
   imagenes: [],
+  whatsapp: '', // en el form: solo los 10 dígitos locales (sin 549)
+}
+
+// El último número usado se recuerda en este navegador para precompletar productos nuevos.
+const CLAVE_ULTIMO_WHATSAPP = 'kamae:admin:ultimo-whatsapp'
+
+function leerUltimoWhatsApp() {
+  try {
+    return localStorage.getItem(CLAVE_ULTIMO_WHATSAPP) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function recordarWhatsApp(local) {
+  try {
+    if (local) localStorage.setItem(CLAVE_ULTIMO_WHATSAPP, local)
+  } catch {
+    // Sin storage: no se precompleta la próxima vez.
+  }
 }
 
 // Firestore → estado del formulario (números como string, keys locales para listas).
@@ -40,6 +60,7 @@ function aFormulario(p) {
     ...p,
     precio: p.precio == null ? '' : String(p.precio),
     moneda: p.moneda ?? 'ARS',
+    whatsapp: (p.whatsapp ?? '').replace(/^549/, ''),
     variantes: (p.variantes ?? []).map((v) => ({
       key: crypto.randomUUID(),
       etiqueta: v.etiqueta ?? '',
@@ -73,6 +94,7 @@ function aFirestore(f) {
       publicId,
       alt: alt.trim(),
     })),
+    whatsapp: f.whatsapp ? `549${f.whatsapp}` : '',
   }
   return { ...datos, visible: camposFaltantes(datos).length === 0 }
 }
@@ -85,6 +107,9 @@ function validar(f) {
   if (!f.nombre.trim()) e.nombre = 'El nombre es obligatorio (incluso para un borrador).'
   else if (!slugify(f.nombre)) e.nombre = 'El nombre tiene que incluir letras o números.'
   if (f.precio !== '' && !esPrecioValido(f.precio)) e.precio = 'Ingresá un precio válido.'
+  if (f.whatsapp && !/^\d{10}$/.test(f.whatsapp)) {
+    e.whatsapp = 'Tienen que ser 10 dígitos: código de área sin 0 + número sin 15.'
+  }
 
   const variantes = {}
   for (const v of f.variantes) {
@@ -104,7 +129,9 @@ export default function ProductoForm() {
 function Formulario({ id }) {
   const esEdicion = Boolean(id)
   const navigate = useNavigate()
-  const [form, setForm] = useState(esEdicion ? null : FORM_VACIO)
+  const [form, setForm] = useState(() =>
+    esEdicion ? null : { ...FORM_VACIO, whatsapp: leerUltimoWhatsApp() },
+  )
   const [errorCarga, setErrorCarga] = useState(null)
   const [errores, setErrores] = useState({})
   const [subiendo, setSubiendo] = useState([])
@@ -185,6 +212,7 @@ function Formulario({ id }) {
         const slug = await slugUnico(slugify(datos.nombre))
         await crearProducto({ ...datos, slug })
       }
+      recordarWhatsApp(form.whatsapp)
       navigate('/admin')
     } catch (e) {
       setErrorGuardar(
@@ -326,6 +354,33 @@ function Formulario({ id }) {
             />
           </Campo>
         )}
+      </Seccion>
+
+      <Seccion titulo="Contacto">
+        <Campo
+          id="whatsapp"
+          etiqueta="WhatsApp de contacto"
+          error={errores.whatsapp}
+          ayuda="Código de área sin 0 + número sin 15. Ej: 351 1234567. Las consultas de este producto llegan a este número."
+        >
+          <div className="flex">
+            <span className="flex items-center rounded-l-sm border border-r-0 border-sumi/20 bg-washi-dark px-3 text-sm text-sumi-soft">
+              +54 9
+            </span>
+            <input
+              id="whatsapp"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              value={form.whatsapp}
+              // Solo dígitos (acepta pegar "351 123-4567"); máximo 10.
+              onChange={(e) => set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="3511234567"
+              aria-invalid={Boolean(errores.whatsapp)}
+              className={`${inputBase} min-w-0 flex-1 rounded-l-none font-mono`}
+            />
+          </div>
+        </Campo>
       </Seccion>
 
       <Seccion titulo="Opciones (talles, colores…)" ancho>

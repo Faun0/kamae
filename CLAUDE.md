@@ -41,11 +41,12 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
   variantes: [{ etiqueta, precio?, disponible }],  // talles shinai, colores tsuba, etc.
   visible: Boolean,                // NO lo elige el admin: true solo si está completo (ver abajo)
   imagenes: [{ url, publicId, alt }],  // publicId de Cloudinary (transformaciones y borrado)
+  whatsapp: String,                // '549' + 10 dígitos, o '' en borrador. Cada producto tiene su número (varios vendedores)
   fechaCreacion, fechaActualizacion // serverTimestamp(); el catálogo y el admin ordenan por fechaCreacion desc
 }
 ```
 No usar la palabra "Armas" como categoría.
-- **Publicación automática**: al guardar, el producto se publica (`visible: true`) solo si tiene descripción, disciplina, categoría, precio y ≥1 imagen; si falta algo queda como borrador y el admin muestra qué falta. Criterio duplicado en `utils/completitud.js` y `productoCompleto()` de `firestore.rules`: mantenerlos sincronizados.
+- **Publicación automática**: al guardar, el producto se publica (`visible: true`) solo si tiene descripción, disciplina, categoría, precio, ≥1 imagen y WhatsApp; si falta algo queda como borrador y el admin muestra qué falta. Criterio duplicado en `utils/completitud.js` y `productoCompleto()` de `firestore.rules`: mantenerlos sincronizados.
 - **Sin "destacado" ni "orden" manual** (decisión del usuario): con varios admins se pisarían el orden entre sí.
 - Lista de consulta: el total se muestra separado por moneda (nunca sumar ARS con USD).
 
@@ -68,9 +69,10 @@ No usar la palabra "Armas" como categoría.
 - Imágenes en Cloudinary: las restricciones van en el upload preset (ver Stack); no hay reglas de Storage.
 
 ## WhatsApp
-- `https://wa.me/${VITE_WHATSAPP}?text=${encodeURIComponent(msg)}`
+- `https://wa.me/${producto.whatsapp}?text=${encodeURIComponent(msg)}` — **el número es por producto** (lo carga el admin en el formulario; se precompleta con el último usado en ese navegador).
+- `VITE_WHATSAPP` es **opcional**: solo el link general del footer (si está vacío, no se muestra).
 - El mensaje incluye nombre, variante, precio y link al producto.
-- "Lista de consulta" en localStorage (carrito sin pago) para consultar varios productos en un solo mensaje.
+- "Lista de consulta" en localStorage (carrito sin pago): se agrupa por número de WhatsApp → un mensaje/botón por vendedor.
 - Registrar evento de analytics `click_whatsapp` con el producto (única métrica de conversión).
 
 ## Rendimiento

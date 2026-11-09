@@ -36,6 +36,7 @@ function Detalle({ producto }) {
     variante: variante?.etiqueta ?? null,
     precio,
     moneda: producto.moneda,
+    whatsapp: producto.whatsapp,
   }
 
   function agregarALista() {
@@ -141,6 +142,7 @@ function Detalle({ producto }) {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <BotonWhatsApp
+              numero={producto.whatsapp}
               mensaje={mensajeProducto(item)}
               evento={{ origen: 'detalle', producto: producto.slug, variante: item.variante }}
               className="flex-1"

@@ -34,6 +34,10 @@ const img = (publicId, alt) => ({
 // El Admin SDK no pasa por las reglas: respetar a mano el esquema de firestore.rules
 // (un producto visible debe estar completo: descripción, disciplina, categoría, precio, imagen).
 // Orden del array = del más nuevo al más viejo (el catálogo ordena por fechaCreacion desc).
+// Dos vendedores ficticios para probar la lista de consulta agrupada por número.
+const WHATSAPP_A = '5493510000001'
+const WHATSAPP_B = '5491100000002'
+
 const productos = [
   {
     nombre: 'Shinai Dobari 3.8',
@@ -51,6 +55,7 @@ const productos = [
       { etiqueta: '3.9 (adultos, largo)', precio: 70000, disponible: false },
     ],
     visible: true,
+    whatsapp: WHATSAPP_A,
     imagenes: [
       img('cld-sample-4', 'Shinai, vista general'),
       img('cld-sample-5', 'Shinai, detalle de la tsuka'),
@@ -72,6 +77,7 @@ const productos = [
       { etiqueta: 'Bronce envejecido', precio: 28000, disponible: true },
     ],
     visible: true,
+    whatsapp: WHATSAPP_A,
     imagenes: [img('samples/ecommerce/analog-classic', 'Tsuba negro mate')],
   },
   {
@@ -86,6 +92,7 @@ const productos = [
     tiempoProduccion: '',
     variantes: [],
     visible: true,
+    whatsapp: WHATSAPP_A,
     imagenes: [img('samples/ecommerce/leather-bag-gray', 'Bokken de roble blanco')],
   },
   {
@@ -100,6 +107,7 @@ const productos = [
     tiempoProduccion: '',
     variantes: [],
     visible: true,
+    whatsapp: WHATSAPP_B, // otro vendedor
     imagenes: [img('samples/landscapes/architecture-signs', 'Iaito 2.45 shaku')],
   },
   {
@@ -115,6 +123,7 @@ const productos = [
     tiempoProduccion: '',
     variantes: [],
     visible: false,
+    whatsapp: '',
     imagenes: [],
   },
 ]

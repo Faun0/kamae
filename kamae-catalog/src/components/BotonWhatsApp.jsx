@@ -3,10 +3,12 @@ import { registrarEvento } from '../firebase/analytics.js'
 import { linkWhatsApp } from '../utils/whatsapp.js'
 
 /** CTA principal: abre WhatsApp con el mensaje y registra `click_whatsapp`. */
-export default function BotonWhatsApp({ mensaje, evento, children, className = '' }) {
+export default function BotonWhatsApp({ numero, mensaje, evento, children, className = '' }) {
+  if (!numero) return null
+
   return (
     <a
-      href={linkWhatsApp(mensaje)}
+      href={linkWhatsApp(numero, mensaje)}
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => registrarEvento('click_whatsapp', evento)}

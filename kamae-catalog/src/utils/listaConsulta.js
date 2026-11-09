@@ -1,6 +1,7 @@
 // "Carrito sin pago": productos a consultar por WhatsApp en un solo mensaje.
 // Store mínimo sobre localStorage para usar con useSyncExternalStore (ver hooks/useListaConsulta).
-// Ítem: { id, slug, nombre, variante, precio, moneda, cantidad } (moneda falta en ítems viejos → ARS)
+// Ítem: { id, slug, nombre, variante, precio, moneda, whatsapp, cantidad }
+// (ítems viejos pueden no tener moneda → ARS, ni whatsapp → número general)
 
 const CLAVE = 'kamae:lista-consulta'
 const listeners = new Set()

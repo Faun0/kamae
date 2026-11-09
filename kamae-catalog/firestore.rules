@@ -19,7 +19,7 @@ service cloud.firestore {
     function productoValido(d) {
       let campos = ['nombre', 'slug', 'descripcion', 'disciplina', 'categoria', 'precio',
         'moneda', 'disponibilidad', 'tiempoProduccion', 'variantes', 'visible',
-        'imagenes', 'fechaCreacion', 'fechaActualizacion'];
+        'imagenes', 'whatsapp', 'fechaCreacion', 'fechaActualizacion'];
       return d.keys().hasOnly(campos) && d.keys().hasAll(campos)
         && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 120
         && d.slug is string && d.slug.size() <= 100
@@ -34,6 +34,9 @@ service cloud.firestore {
         && d.variantes is list && d.variantes.size() <= 30
         && d.visible is bool
         && d.imagenes is list && d.imagenes.size() <= 10
+        // WhatsApp de contacto del producto: '' (borrador) o 549 + 10 dígitos.
+        && d.whatsapp is string
+        && (d.whatsapp == '' || d.whatsapp.matches('^549[0-9]{10}$'))
         && d.fechaCreacion is timestamp
         && d.fechaActualizacion is timestamp
         // Solo se publica un producto completo (mismo criterio que utils/completitud.js).
@@ -45,7 +48,8 @@ service cloud.firestore {
         && d.disciplina.size() > 0
         && d.categoria != ''
         && d.precio != null
-        && d.imagenes.size() > 0;
+        && d.imagenes.size() > 0
+        && d.whatsapp != '';
     }
 
     match /admins/{uid} {

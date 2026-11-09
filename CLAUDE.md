@@ -99,3 +99,4 @@ No usar la palabra "Armas" como categoría.
 ## Deuda técnica conocida
 - SPA: las previews de links por WhatsApp/Instagram no muestran datos del producto (OG tags). Evaluar prerender o migrar a Astro/Next más adelante.
 - Contenido pendiente: guía de talles de shinai, envíos, tiempos de pedidos personalizados, "Sobre Kamae".
+- **Normativa argentina (botón de arrepentimiento, datos del proveedor, precios en pesos, Data Fiscal, aviso de privacidad): EN PAUSA** por decisión del usuario hasta que defina el alcance del producto. Está listada solo como referencia en el README; no implementar nada de eso en la web sin que el usuario lo pida.

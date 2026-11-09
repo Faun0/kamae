@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Env (config de Firebase, WhatsApp, UID admin)
+# Env (config de Firebase, WhatsApp, Cloudinary)
 .env
 .env.*
 !.env.example

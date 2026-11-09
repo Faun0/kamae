@@ -1,13 +1,68 @@
 rules_version = '2';
 
-// PROVISORIO (Fase 3): lectura pública de productos visibles, toda escritura denegada.
-// El seed usa el Admin SDK, que no pasa por estas reglas.
-// Fase 3.5: reglas definitivas con escritura solo para el UID admin + tests en emulador.
+// Reglas de Kamae. La seguridad real está acá: la ruta privada de React es solo UX.
+// Tests: tests/firestore.rules.test.js (`npm run test:rules`).
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /productos/{id} {
-      allow read: if resource.data.visible == true;
-      allow write: if false;
+
+    // Admin = UID con documento en /admins/{uid}. Se da de alta desde la Firebase Console.
+    // NO usar `request.auth != null`: cualquiera puede crearse una cuenta.
+    function esAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
+
+    // Esquema de `productos` (ver CLAUDE.md). Valida tipos y valores permitidos.
+    // Los elementos de variantes/imagenes no se validan uno a uno (las reglas no tienen
+    // bucles); se limita su cantidad.
+    function productoValido(d) {
+      let campos = ['nombre', 'slug', 'descripcion', 'disciplina', 'categoria', 'precio',
+        'moneda', 'disponibilidad', 'tiempoProduccion', 'variantes', 'visible',
+        'destacado', 'orden', 'imagenes', 'fechaCreacion', 'fechaActualizacion'];
+      return d.keys().hasOnly(campos) && d.keys().hasAll(campos)
+        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 120
+        && d.slug is string && d.slug.size() <= 100
+        && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && d.descripcion is string && d.descripcion.size() <= 5000
+        && d.disciplina is list && d.disciplina.size() > 0
+        && d.disciplina.hasOnly(['kendo', 'iaido'])
+        && d.categoria in ['shinai', 'bokken', 'iaito', 'tsuba', 'bogu', 'indumentaria', 'accesorios']
+        && d.precio is number && d.precio >= 0
+        && d.moneda == 'ARS'
+        && d.disponibilidad in ['disponible', 'agotado', 'a_pedido']
+        && d.tiempoProduccion is string && d.tiempoProduccion.size() <= 50
+        && d.variantes is list && d.variantes.size() <= 30
+        && d.visible is bool
+        && d.destacado is bool
+        && d.orden is number
+        && d.imagenes is list && d.imagenes.size() <= 10
+        && d.fechaCreacion is timestamp
+        && d.fechaActualizacion is timestamp;
+    }
+
+    match /admins/{uid} {
+      // Cada usuario puede consultar solo su propio documento (para saber si es admin).
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    match /productos/{id} {
+      // Público: solo visibles. Las queries públicas deben filtrar `visible == true`.
+      allow read: if resource.data.visible == true || esAdmin();
+
+      allow create: if esAdmin()
+        && productoValido(request.resource.data)
+        && request.resource.data.fechaCreacion == request.time
+        && request.resource.data.fechaActualizacion == request.time;
+
+      allow update: if esAdmin()
+        && productoValido(request.resource.data)
+        && request.resource.data.fechaCreacion == resource.data.fechaCreacion
+        && request.resource.data.fechaActualizacion == request.time;
+
+      allow delete: if esAdmin();
+    }
+
+    // Todo lo demás queda cerrado por defecto.
   }
 }

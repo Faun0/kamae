@@ -20,7 +20,7 @@ Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken,
 
 ## Convenciones
 - Idioma del código: nombres de dominio en español (productos, precio, disponibilidad), código técnico en inglés está bien.
-- Variables de entorno con prefijo `VITE_` en `.env` (no commitear `.env`): config de Firebase, `VITE_WHATSAPP` (formato 549XXXXXXXXXX), `VITE_ADMIN_UID`.
+- Variables de entorno con prefijo `VITE_` en `.env` (no commitear `.env`): config de Firebase, `VITE_WHATSAPP` (formato 549XXXXXXXXXX), Cloudinary. El admin NO va en `.env` (ver Seguridad).
 - Estructura: `src/components`, `src/pages`, `src/firebase`, `src/hooks`, `src/utils`.
 - Desarrollo contra Firebase Emulator Suite, no contra producción.
 
@@ -55,7 +55,10 @@ No usar la palabra "Armas" como categoría.
 
 ## Seguridad (crítico)
 - La ruta privada en React es solo UX. La seguridad real está en las reglas.
-- Firestore: lectura pública solo de productos `visible == true`; escritura solo si `request.auth.uid` es el UID admin. NO usar `request.auth != null` como criterio de admin (cualquiera puede crearse una cuenta).
+- Firestore: lectura pública solo de productos `visible == true`; escritura solo para admins. NO usar `request.auth != null` como criterio de admin (cualquiera puede crearse una cuenta).
+- **Admin = UID con documento en `admins/{uid}`** (allowlist; las reglas usan `exists()`). En producción se da de alta creando ese doc a mano en la Firebase Console. Desde el cliente nadie puede escribir ni listar `admins`; cada usuario solo puede leer su propio doc (así el frontend sabe si es admin, sin `VITE_ADMIN_UID`).
+- Las reglas también validan el esquema de `productos` (campos exactos, tipos, enums, `fechaCreacion`/`fechaActualizacion` con `serverTimestamp()`, inmutabilidad de `fechaCreacion`). Si se agrega un campo al modelo, actualizar `firestore.rules` y sus tests.
+- Tests de reglas: `tests/firestore.rules.test.js`. `npm run test:rules` levanta su propio emulador; si `npm run emulators` ya está corriendo, usar `npx vitest run` (usa otro projectId, no pisa el seed).
 - Imágenes en Cloudinary: las restricciones van en el upload preset (ver Stack); no hay reglas de Storage.
 
 ## WhatsApp
@@ -72,7 +75,7 @@ No usar la palabra "Armas" como categoría.
 1. ✅ Setup Vite + React + Tailwind + ESLint
 2. ✅ Estructura base, React Router, Git
 3. ✅ Firebase: SDK, `.env`, Emulators, decidir hosting de imágenes (→ Cloudinary)
-3.5. Reglas de seguridad Firestore/Storage + pruebas en emulador
+3.5. ✅ Reglas de seguridad Firestore + pruebas en emulador (Storage no aplica: imágenes en Cloudinary)
 4. ✅ Públicos: Navbar, Footer, ProductCard, grilla, filtros, detalle, WhatsApp, lista de consulta, analytics (falta: probar con imágenes reales de Cloudinary)
 5. Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión
 6. Deploy: build, rewrites, verificar que el site ID `kamae` esté libre, GitHub Actions

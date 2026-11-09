@@ -17,7 +17,7 @@ const db = getFirestore()
 const auth = getAuth()
 
 const ADMIN = {
-  uid: 'admin-dev', // = VITE_ADMIN_UID en .env.development
+  uid: 'admin-dev',
   email: 'admin@kamae.test',
   password: 'kamae123',
   displayName: 'Admin Kamae',
@@ -125,6 +125,8 @@ async function seedAdmin() {
     if (error.code !== 'auth/user-not-found') throw error
   }
   await auth.createUser(ADMIN)
+  // Las reglas consideran admin a quien tenga documento en /admins/{uid}.
+  await db.doc(`admins/${ADMIN.uid}`).set({ email: ADMIN.email })
   console.log(`✔ Admin: ${ADMIN.email} / ${ADMIN.password} (uid ${ADMIN.uid})`)
 }
 

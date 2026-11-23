@@ -18,7 +18,7 @@ export default function ListaConsulta() {
         <p className="mt-2 text-sumi-soft">
           Agregá productos para consultarlos todos juntos por WhatsApp.
         </p>
-        <Link to="/" className="mt-6 inline-block text-shu underline underline-offset-4">
+        <Link to="/catalogo" className="mt-6 inline-block text-shu underline underline-offset-4">
           Ir al catálogo
         </Link>
       </section>

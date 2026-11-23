@@ -1,0 +1,56 @@
+/* GENERADO por scripts/fuente-kanji.mjs (npm run fuente:kanji). No editar a mano. */
+/* Caracteres: 構 え 剣 道 居 合 店 */
+/* 構 */
+@font-face {
+  font-family: 'Noto Serif JP';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-107-400-normal.woff2) format('woff2'), url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-107-400-normal.woff) format('woff');
+  unicode-range: U+23,U+3c,U+2192,U+4e45,U+4efb,U+4f50,U+4f8b,U+4fc2,U+5024,U+5150,U+5272,U+5370,U+53bb,U+542b,U+56db,U+56e3,U+57ce,U+5bc4,U+5bcc,U+5f71,U+60aa,U+6238,U+6280,U+629c,U+6539,U+66ff,U+670d,U+677e-677f,U+6839,U+69cb,U+6b4c,U+6bb5,U+6e96,U+6f14,U+72ec,U+7389,U+7814,U+79cb,U+79d1,U+79fb,U+7a0e,U+7d0d,U+85e4,U+8d64,U+9632,U+96e2,U+9805,U+99ac,U+ff1e;
+}
+/* え */
+@font-face {
+  font-family: 'Noto Serif JP';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-119-400-normal.woff2) format('woff2'), url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-119-400-normal.woff) format('woff');
+  unicode-range: U+20,U+2027,U+3001-3002,U+3041-307f,U+3081-308f,U+3091-3093,U+3099-309a,U+309d-309e,U+30a1-30e1,U+30e3-30ed,U+30ef-30f0,U+30f2-30f4,U+30fb-30fe,U+ff0c,U+ff0e;
+}
+/* 剣 */
+@font-face {
+  font-family: 'Noto Serif JP';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-93-400-normal.woff2) format('woff2'), url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-93-400-normal.woff) format('woff');
+  unicode-range: U+21d2,U+25ce,U+300a-300b,U+4e89,U+4e9c,U+4ea1,U+5263,U+53cc,U+5426,U+5869,U+5947,U+598a,U+5999,U+5e55,U+5e72,U+5e79,U+5fae,U+5fb9,U+602a,U+6163,U+624d,U+6749,U+6c5a,U+6cbf,U+6d45,U+6dfb,U+6e7e,U+708e,U+725b,U+7763,U+79c0,U+7bc4,U+7c89,U+7e01,U+7e2e,U+8010,U+8033,U+8c6a,U+8cc3,U+8f1d,U+8f9b,U+8fb2,U+907f,U+90f7,U+9707,U+9818,U+9b3c,U+ff0a,U+ff4d;
+}
+/* 道店 */
+@font-face {
+  font-family: 'Noto Serif JP';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-114-400-normal.woff2) format('woff2'), url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-114-400-normal.woff) format('woff');
+  unicode-range: U+3e,U+3005,U+4e0d,U+4e88,U+4ecb,U+4ee3,U+4ef6,U+4fdd,U+4fe1,U+500b,U+50cf,U+5186,U+5316,U+53d7,U+540c,U+544a,U+54e1,U+5728,U+58f2,U+5973,U+5b89,U+5c71,U+5e02,U+5e97,U+5f15,U+5fc3,U+5fdc,U+601d,U+611b,U+611f,U+671f,U+6728,U+6765,U+683c,U+6b21,U+6ce8,U+6d3b,U+6d77,U+7530,U+7740,U+7acb,U+7d50,U+826f,U+8f09,U+8fbc,U+9001,U+9053,U+91ce,U+9762,U+98df;
+}
+/* 居 */
+@font-face {
+  font-family: 'Noto Serif JP';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-105-400-normal.woff2) format('woff2'), url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-105-400-normal.woff) format('woff');
+  unicode-range: U+25,U+25a0,U+4e26,U+4f4e,U+5341,U+56f2,U+5bbf,U+5c45,U+5c55,U+5c5e,U+5dee,U+5e9c,U+5f7c,U+6255,U+627f,U+62bc,U+65cf,U+661f,U+666e,U+66dc,U+67fb,U+6975,U+6a4b,U+6b32,U+6df1,U+6e29,U+6fc0,U+738b,U+7686,U+7a76,U+7a81,U+7c73,U+7d75,U+7dd2,U+82e5,U+82f1,U+85ac,U+888b,U+899a,U+8a31,U+8a8c,U+8ab0,U+8b58,U+904a,U+9060,U+9280,U+95b2,U+984d,U+9ce5,U+ff18;
+}
+/* 合 */
+@font-face {
+  font-family: 'Noto Serif JP';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-117-400-normal.woff2) format('woff2'), url(../node_modules/@fontsource/noto-serif-jp/files/noto-serif-jp-117-400-normal.woff) format('woff');
+  unicode-range: U+4e,U+a0,U+3000,U+300c-300d,U+4e00,U+4e0a,U+4e2d,U+4e8b,U+4eba,U+4f1a,U+5165,U+5168,U+5185,U+51fa,U+5206,U+5229,U+524d,U+52d5,U+5408,U+554f,U+5831,U+5834,U+5927,U+5b9a,U+5e74,U+5f0f,U+60c5,U+65b0,U+65b9,U+6642,U+6700,U+672c,U+682a,U+6b63,U+6c17,U+7121,U+751f,U+7528,U+753b,U+76ee,U+793e,U+884c,U+898b,U+8a18,U+9593,U+95a2,U+ff01,U+ff08-ff09;
+}

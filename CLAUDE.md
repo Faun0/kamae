@@ -1,6 +1,6 @@
 # Proyecto Kamae (kamae.web.app)
 
-Catálogo e-commerce liviano de equipamiento para Kendo e Iaido (shinai, bokken, iaito, tsubas impresas en 3D personalizadas, indumentaria). **Sin pasarela de pago**: la compra se deriva a WhatsApp con un mensaje precargado.
+**Vidriera comunitaria sin fines de lucro** de equipamiento para Kendo e Iaido en Argentina (shinai, bokken, iaito, tsubas impresas en 3D personalizadas, indumentaria). **Sin pasarela de pago ni intermediación**: la compra se deriva a WhatsApp con un mensaje precargado y se coordina directo con el vendedor. Posicionamiento, textos y decisiones de la home: `README-home.md`. Voz de los textos: primera persona del singular, voseo.
 
 ## Stack
 - React + Vite, Tailwind CSS (estética minimalista Dojo/Zen, mobile-first), ESLint, React Router.
@@ -60,7 +60,9 @@ No usar la palabra "Armas" como categoría.
 - Sin plan Blaze no hay emails automáticos al admin ("nuevo usuario") ni al vendedor ("aprobado"): el admin ve un contador de pendientes en la pestaña Usuarios.
 
 ## Rutas
-- `/` catálogo (grilla + filtros por disciplina y categoría; solo `visible == true`)
+- `/` **home** (`pages/Home.jsx`): hero, cómo funciona, explorar Kendo/Iaido, "Lo último que se sumó" (4 más nuevos del caché de `obtenerCatalogo()`, cargados con `<Await>` para no frenar el hero), qué hay detrás, invitación a publicar. Si la URL trae `?disciplina=` o `?categoria=` (links viejos de cuando el catálogo vivía en `/`), el loader redirige a `/catalogo` conservando los parámetros.
+- `/catalogo` catálogo (grilla + filtros por disciplina y categoría; solo `visible == true`)
+- `/sobre` "Sobre Kamae" (`pages/Sobre.jsx`). Textos compartidos con la home en `utils/contenido.js`. Ocultas por decisión del usuario: "Quién está detrás" y "Contacto" (no existen en el código), y "Qué significa el nombre" (existe, detrás de `SOBRE_PUBLICAR.significadoNombre = false` hasta confirmarlo con un sensei).
 - `/producto/:slug` detalle con selector de variante y CTA WhatsApp
 - `/consulta` lista de consulta (carrito sin pago)
 - `/login` (ingresar, crear cuenta de vendedor, recuperar contraseña)
@@ -86,6 +88,12 @@ No usar la palabra "Armas" como categoría.
 - "Lista de consulta" en localStorage (carrito sin pago): se agrupa por número de WhatsApp → un mensaje/botón por vendedor.
 - Registrar evento de analytics `click_whatsapp` con el producto (única métrica de conversión).
 
+## Diseño
+- **Navbar**: escritorio con Inicio · Catálogo · Sobre Kamae · Consulta · Panel; en celular, logo + Consulta (con contador) siempre visibles y el resto en un menú ☰ (`#menu-celular`, se cierra al elegir un link y con Escape).
+- **Fuente Noto Serif JP self-hosted** (`@fontsource/noto-serif-jp`, sin pedidos a Google): `main.jsx` importa el alfabeto latino (pesos 400 y 600) y `src/fuente-kanji.css`, que declara **solo los fragmentos de kanji usados en el sitio**. Ese archivo lo genera `npm run fuente:kanji` (`scripts/fuente-kanji.mjs`): correrlo al agregar un kanji/kana nuevo (si no, ese carácter cae a la fuente japonesa del sistema). No importar `400.css` completo: son ~200 kB de CSS que bloquean el render.
+- **Fotos de productos**: no se unifican ni retocan (cada vendedor sube lo que tiene); solo un borde fino neutro (`ring-1 ring-sumi/10`) en tarjeta y detalle.
+- Animaciones: respetar `prefers-reduced-motion` (`motion-safe:`). El botón "Cómo funciona" de la home hace el scroll a mano (`irAComoFunciona`): el `ScrollRestoration` de React Router pisa el salto nativo a un ancla.
+
 ## Rendimiento
 - Catálogo público con `getDocs` (no `onSnapshot`); tiempo real solo en admin.
 - Comprimir imágenes en el cliente antes de subir (`browser-image-compression`, WebP), `loading="lazy"` en la grilla.
@@ -99,6 +107,7 @@ No usar la palabra "Armas" como categoría.
 5. ✅ Admin: login, ruta protegida, CRUD completo (alta, edición, borrado incl. imágenes), compresión. Subida real verificada (JPEG 379 KB → WebP 1600 px, 64 KB) y borrado por delete token al quitar/cancelar.
 6. ✅ Deploy en **https://kamae-ar.web.app** (proyecto Firebase `kamae-ar`, Firestore en `southamerica-east1`, plan Spark). Admin de producción: `cris.javi.05@gmail.com` con doc `admins/{uid}`. API key web restringida por referrer (`kamae-ar.web.app`, `kamae-ar.firebaseapp.com`). El sign-up de Auth tiene que quedar **habilitado** (los vendedores se registran solos; la aprobación del admin es el filtro). Sitio extra `kamae.web.app`: descartado por ahora.
 6.5. ✅ Vendedores: registro con aprobación del admin, verificación de email, recuperar contraseña, cada vendedor gestiona solo sus productos.
+6.6. ✅ Home nueva, catálogo en `/catalogo`, página "Sobre Kamae" y fuente propia (ver `README-home.md`).
 7. QA en móviles reales + Lighthouse
 
 ## Deploy
@@ -110,5 +119,6 @@ No usar la palabra "Armas" como categoría.
 
 ## Deuda técnica conocida
 - SPA: las previews de links por WhatsApp/Instagram no muestran datos del producto (OG tags). Evaluar prerender o migrar a Astro/Next más adelante.
-- Contenido pendiente: guía de talles de shinai, envíos, tiempos de pedidos personalizados, "Sobre Kamae".
+- Contenido pendiente: guía de talles de shinai, envíos, tiempos de pedidos personalizados. En `/sobre`: "Quién está detrás" y "Contacto" (los define el usuario) y confirmar el significado del nombre.
+- Futuro: valoraciones de vendedores (paso 4 "Valorá", hoy "Próximamente"). Ver `README-home.md` §7 antes de diseñarlo.
 - **Normativa argentina (botón de arrepentimiento, datos del proveedor, precios en pesos, Data Fiscal, aviso de privacidad): EN PAUSA** por decisión del usuario hasta que defina el alcance del producto. Está listada solo como referencia en el README; no implementar nada de eso en la web sin que el usuario lo pida.

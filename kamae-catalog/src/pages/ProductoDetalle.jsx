@@ -49,7 +49,7 @@ function Detalle({ producto }) {
       <title>{`${producto.nombre} · Kamae`}</title>
       <meta name="description" content={producto.descripcion} />
 
-      <Link to="/" className="text-sm text-sumi-soft hover:text-sumi">
+      <Link to="/catalogo" className="text-sm text-sumi-soft hover:text-sumi">
         ← Volver al catálogo
       </Link>
 
@@ -63,7 +63,7 @@ function Detalle({ producto }) {
             anchos={[450, 700, 900, 1200]}
             sizes="(min-width: 768px) 50vw, 100vw"
             prioridad
-            className="aspect-square w-full rounded-sm"
+            className="aspect-square w-full rounded-sm ring-1 ring-sumi/10"
           />
           {imagenes.length > 1 && (
             <div className="mt-3 flex gap-2 overflow-x-auto">

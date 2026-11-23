@@ -25,7 +25,7 @@ export default function RouteError() {
         >
           Reintentar
         </button>
-        <Link to="/" className="text-sumi-soft underline underline-offset-4">
+        <Link to="/catalogo" className="text-sumi-soft underline underline-offset-4">
           Volver al catálogo
         </Link>
       </div>

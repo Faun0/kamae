@@ -6,7 +6,7 @@ export default function NotFound({ mensaje = 'Página no encontrada' }) {
       <title>No encontrado · Kamae</title>
       <p className="font-serif text-6xl text-shu">404</p>
       <h1 className="font-serif text-2xl">{mensaje}</h1>
-      <Link to="/" className="text-shu underline underline-offset-4">
+      <Link to="/catalogo" className="text-shu underline underline-offset-4">
         Volver al catálogo
       </Link>
     </section>

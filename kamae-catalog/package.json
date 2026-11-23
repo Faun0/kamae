@@ -10,9 +10,11 @@
     "preview": "vite preview",
     "emulators": "firebase emulators:start --project demo-kamae --only auth,firestore",
     "seed": "node scripts/seed.mjs",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-kamae-rules-test \"vitest run\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-kamae-rules-test \"vitest run\"",
+    "fuente:kanji": "node scripts/fuente-kanji.mjs"
   },
   "dependencies": {
+    "@fontsource/noto-serif-jp": "^5.3.1",
     "browser-image-compression": "^2.0.2",
     "firebase": "^13.2.0",
     "react": "^19.3.1",

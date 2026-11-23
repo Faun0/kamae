@@ -1,6 +1,8 @@
 # Kamae 構え
 
-Catálogo web de equipamiento para **Kendo e Iaido** (shinai, bokken, iaito, tsubas impresas en 3D, indumentaria y accesorios), pensado para **revender de forma local**.
+**Vidriera comunitaria sin fines de lucro** para la gente de **Kendo e Iaido** de Argentina: la comunidad muestra lo que fabrica, tiene o consigue (shinai, bogu, iaito, tsubas impresas en 3D, indumentaria y accesorios) en un solo lugar. Kamae no es intermediaria: no cobra comisión ni participa del pago ni de la entrega, y cada vendedor es responsable de lo que publica. Nace para acercar equipamiento que es difícil de conseguir en el país.
+
+El proyecto lo desarrolla y mantiene Cristian Pérez (Córdoba), y también funciona como muestra de su trabajo en desarrollo web y gestión de proyectos.
 
 **Sitio:** https://kamae-ar.web.app
 

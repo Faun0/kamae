@@ -1,12 +1,14 @@
-import { createBrowserRouter, data } from 'react-router-dom'
+import { createBrowserRouter, data, redirect } from 'react-router-dom'
 import CargandoCatalogo from './components/CargandoCatalogo.jsx'
 import Layout from './components/Layout.jsx'
 import RouteError from './components/RouteError.jsx'
 import { obtenerCatalogo, obtenerProductoPorSlug } from './firebase/productos.js'
 import Catalogo from './pages/Catalogo.jsx'
+import Home from './pages/Home.jsx'
 import ListaConsulta from './pages/ListaConsulta.jsx'
 import ProductoDetalle from './pages/ProductoDetalle.jsx'
 import NotFound from './pages/NotFound.jsx'
+import Sobre from './pages/Sobre.jsx'
 
 // Las páginas de admin se cargan bajo demanda para no inflar el bundle público.
 const lazyPage = (importer) => async () => ({
@@ -29,12 +31,28 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
+            element: <Home />,
+            loader: ({ request }) => {
+              // Antes el catálogo vivía en "/": los links compartidos con filtros
+              // (/?disciplina=kendo) se redirigen a /catalogo conservando los parámetros.
+              const { search, searchParams } = new URL(request.url)
+              if (searchParams.has('disciplina') || searchParams.has('categoria')) {
+                throw redirect(`/catalogo${search}`)
+              }
+              // Sin await: el hero se pinta al instante y "Lo último" espera con <Await>.
+              // Usa el mismo caché por sesión que el catálogo (no suma lecturas).
+              return { productos: obtenerCatalogo() }
+            },
+          },
+          {
+            path: 'catalogo',
             element: <Catalogo />,
             loader: async () => ({ productos: await obtenerCatalogo() }),
             // Cambiar filtros (?disciplina=...) no vuelve a ejecutar el loader.
             shouldRevalidate: ({ currentUrl, nextUrl }) =>
               currentUrl.pathname !== nextUrl.pathname,
           },
+          { path: 'sobre', element: <Sobre /> },
           {
             path: 'producto/:slug',
             element: <ProductoDetalle />,

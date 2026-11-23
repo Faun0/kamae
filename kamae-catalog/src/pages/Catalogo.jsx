@@ -35,7 +35,7 @@ export default function Catalogo() {
 
   return (
     <section>
-      <title>Kamae · Equipamiento para Kendo e Iaido</title>
+      <title>Catálogo · Kamae</title>
       <h1 className="font-serif text-3xl tracking-wide">Catálogo</h1>
       <p className="mt-2 text-sumi-soft">Equipamiento para Kendo e Iaido.</p>
 

@@ -9,14 +9,15 @@ export default function ProductCard({ producto }) {
 
   return (
     <Link to={`/producto/${producto.slug}`} className="group block">
-      <div className="relative aspect-square overflow-hidden rounded-sm">
+      {/* Borde fino neutro: las fotos de fondo blanco no "flotan" sobre el washi. No toca la foto. */}
+      <div className="relative aspect-square overflow-hidden rounded-sm ring-1 ring-sumi/10">
         <ImagenProducto
           imagen={producto.imagenes?.[0]}
           alt={producto.nombre}
           ancho={400}
           anchos={[300, 400, 600, 800]}
           sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
-          className={`h-full w-full transition duration-500 group-hover:scale-105 ${
+          className={`h-full w-full transition duration-500 motion-safe:group-hover:scale-105 ${
             agotado ? 'opacity-60 grayscale' : ''
           }`}
         />

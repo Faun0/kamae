@@ -148,7 +148,10 @@ export default function AdminUsuarios() {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{u.nombre}</p>
-                          <p className="text-sm break-all text-sumi-soft">{u.email}</p>
+                          <p className="text-sm break-all text-sumi-soft">
+                            {u.email}
+                            {u.ciudad && ` · ${u.ciudad}`}
+                          </p>
                           <p className="mt-0.5 text-xs text-sumi-soft">
                             Solicitó el {fecha(u.fechaSolicitud)}
                             {estado !== 'pendiente' && ` · ${productos} producto${productos === 1 ? '' : 's'}`}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BadgeDisponibilidad from '../../components/BadgeDisponibilidad.jsx'
 import ImagenProducto from '../../components/ImagenProducto.jsx'
+import PerfilPublico from '../../components/admin/PerfilPublico.jsx'
 import { botonPrimario } from '../../components/admin/estilos.js'
 import { borrarProducto, suscribirProductos } from '../../firebase/productosAdmin.js'
 import { suscribirUsuarios } from '../../firebase/usuariosAdmin.js'
@@ -14,8 +15,10 @@ const etiquetaCategoria = (valor) =>
   CATEGORIAS.find((c) => c.valor === valor)?.etiqueta ?? valor
 
 export default function AdminProductos() {
-  const { esAdmin, usuario } = useSesion()
+  const { esAdmin, usuario, perfil } = useSesion()
   const uid = usuario.uid
+  // undefined = cargando; null = falta el perfil público (requisito para publicar).
+  const [perfilPublico, setPerfilPublico] = useState(undefined)
   const [productos, setProductos] = useState(null)
   const [vendedores, setVendedores] = useState({}) // uid → perfil (solo admin)
   const [error, setError] = useState(null)
@@ -61,6 +64,7 @@ export default function AdminProductos() {
   return (
     <section>
       <title>{`${esAdmin ? 'Admin' : 'Mis productos'} · Kamae`}</title>
+      <PerfilPublico uid={uid} esAdmin={esAdmin} perfil={perfil} onCambio={setPerfilPublico} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-serif text-2xl">
           {esAdmin ? 'Productos' : 'Mis productos'}
@@ -68,9 +72,19 @@ export default function AdminProductos() {
             <span className="ml-2 text-base text-sumi-soft">({productos.length})</span>
           )}
         </h1>
-        <Link to="/admin/nuevo" className={botonPrimario}>
-          + Nuevo producto
-        </Link>
+        {perfilPublico ? (
+          <Link to="/admin/nuevo" className={botonPrimario}>
+            + Nuevo producto
+          </Link>
+        ) : (
+          <span
+            className={`${botonPrimario} cursor-not-allowed opacity-50`}
+            aria-disabled="true"
+            title="Completá tu perfil público para publicar"
+          >
+            + Nuevo producto
+          </span>
+        )}
       </div>
 
       <input

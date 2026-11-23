@@ -90,10 +90,11 @@ export const recuperarContrasena = (email) => sendPasswordResetEmail(auth, email
 export const reenviarVerificacion = () => sendEmailVerification(auth.currentUser)
 
 /** Crea el perfil de vendedor en estado 'pendiente' para el usuario actual. */
-export async function solicitarAcceso(nombre) {
+export async function solicitarAcceso(nombre, ciudad) {
   const usuario = auth.currentUser
   await setDoc(doc(adminDb, 'usuarios', usuario.uid), {
     nombre: nombre.trim(),
+    ciudad: ciudad.trim(),
     email: usuario.email,
     estado: 'pendiente',
     emailVerificado: usuario.emailVerified,
@@ -104,8 +105,8 @@ export async function solicitarAcceso(nombre) {
 }
 
 /** Registro de vendedor: cuenta + email de verificación + solicitud pendiente. */
-export async function registrarse({ nombre, email, password }) {
+export async function registrarse({ nombre, ciudad, email, password }) {
   const { user } = await createUserWithEmailAndPassword(auth, email, password)
   await sendEmailVerification(user).catch(() => {}) // se puede reenviar después
-  await solicitarAcceso(nombre)
+  await solicitarAcceso(nombre, ciudad)
 }

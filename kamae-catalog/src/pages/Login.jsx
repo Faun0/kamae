@@ -23,7 +23,10 @@ const MENSAJES_ERROR = {
 
 const TITULOS = {
   ingresar: ['Ingresar', 'Acceso para administradores y vendedores.'],
-  registro: ['Crear cuenta de vendedor', 'Después de registrarte, un administrador tiene que aprobar tu cuenta.'],
+  registro: [
+    'Crear cuenta de vendedor',
+    'Después de registrarte, un administrador tiene que aprobar tu cuenta. Tu nombre y tu ciudad se muestran en lo que publiques.',
+  ],
   recuperar: ['Recuperar contraseña', 'Te mandamos un email para elegir una contraseña nueva.'],
 }
 
@@ -33,6 +36,7 @@ export default function Login() {
   const destino = useLocation().state?.desde ?? '/admin'
   const [modo, setModo] = useState('ingresar')
   const [nombre, setNombre] = useState('')
+  const [ciudad, setCiudad] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
@@ -52,6 +56,7 @@ export default function Login() {
   function validar() {
     if (modo === 'registro') {
       if (!nombre.trim()) return 'Ingresá tu nombre.'
+      if (!ciudad.trim()) return 'Ingresá tu ciudad.'
       if (password.length < MIN_PASSWORD) return MENSAJES_ERROR['auth/weak-password']
       if (password !== password2) return 'Las contraseñas no coinciden.'
     }
@@ -75,7 +80,7 @@ export default function Login() {
         return
       }
       if (modo === 'registro') {
-        await registrarse({ nombre, email: email.trim(), password })
+        await registrarse({ nombre, ciudad, email: email.trim(), password })
       } else {
         await iniciarSesion(email.trim(), password)
       }
@@ -97,7 +102,7 @@ export default function Login() {
     recuperar: enviando ? 'Enviando…' : 'Enviar email',
   }[modo]
   const incompleto =
-    !email || (modo !== 'recuperar' && !password) || (modo === 'registro' && (!nombre || !password2))
+    !email || (modo !== 'recuperar' && !password) || (modo === 'registro' && (!nombre || !ciudad || !password2))
 
   return (
     <section className="mx-auto max-w-sm py-8">
@@ -114,6 +119,19 @@ export default function Login() {
               maxLength={80}
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
+              className={inputClase}
+            />
+          </Campo>
+        )}
+        {modo === 'registro' && (
+          <Campo id="ciudad" etiqueta="Ciudad">
+            <input
+              id="ciudad"
+              autoComplete="address-level2"
+              maxLength={60}
+              placeholder="Ej.: Córdoba"
+              value={ciudad}
+              onChange={(e) => setCiudad(e.target.value)}
               className={inputClase}
             />
           </Campo>

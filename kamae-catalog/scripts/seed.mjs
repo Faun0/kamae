@@ -32,6 +32,7 @@ const VENDEDORES = [
     displayName: 'Vendedor Aprobado',
     emailVerified: true,
     estado: 'aprobado',
+    ciudad: 'Rosario',
   },
   {
     uid: 'pendiente-dev',
@@ -40,8 +41,19 @@ const VENDEDORES = [
     displayName: 'Vendedor Pendiente',
     emailVerified: true,
     estado: 'pendiente',
+    ciudad: 'Mendoza',
   },
 ]
+
+// Perfiles públicos (vendedores/{uid}): nombre y ciudad que ven los compradores.
+// El pendiente no tiene: recién lo completa cuando lo aprueban.
+const PERFILES_PUBLICOS = {
+  [ADMIN.uid]: { nombre: 'Admin Kamae', ciudad: 'Córdoba' },
+  'vendedor-dev': { nombre: 'Vendedor Aprobado', ciudad: 'Rosario' },
+}
+
+// Condición por slug (el resto de los publicados, 'nuevo'; los borradores, sin elegir).
+const CONDICION = { 'iaito-245': 'usado' }
 
 // Dueño de cada producto (por slug); el resto queda a nombre del admin.
 const DUENOS = {
@@ -169,6 +181,7 @@ async function seedUsuarios() {
   if (users.length) await auth.deleteUsers(users.map((u) => u.uid))
   await db.recursiveDelete(db.collection('usuarios'))
   await db.recursiveDelete(db.collection('admins'))
+  await db.recursiveDelete(db.collection('vendedores'))
 
   await recrearUsuario(ADMIN)
   // Las reglas consideran admin a quien tenga documento en /admins/{uid}.
@@ -176,10 +189,11 @@ async function seedUsuarios() {
   console.log(`✔ Admin: ${ADMIN.email} / ${ADMIN.password} (uid ${ADMIN.uid})`)
 
   const fecha = Timestamp.now()
-  for (const { estado, ...cuenta } of VENDEDORES) {
+  for (const { estado, ciudad, ...cuenta } of VENDEDORES) {
     await recrearUsuario(cuenta)
     await db.doc(`usuarios/${cuenta.uid}`).set({
       nombre: cuenta.displayName,
+      ciudad,
       email: cuenta.email,
       estado,
       emailVerificado: cuenta.emailVerified,
@@ -188,6 +202,11 @@ async function seedUsuarios() {
     })
     console.log(`✔ Vendedor ${estado}: ${cuenta.email} / ${cuenta.password}`)
   }
+
+  for (const [uid, perfil] of Object.entries(PERFILES_PUBLICOS)) {
+    await db.doc(`vendedores/${uid}`).set(perfil)
+  }
+  console.log(`✔ ${Object.keys(PERFILES_PUBLICOS).length} perfiles públicos`)
 }
 
 async function seedProductos() {
@@ -202,7 +221,8 @@ async function seedProductos() {
     const fecha = Timestamp.fromMillis(ahora - i * 3_600_000)
     const ref = coleccion.doc()
     const vendedorUid = DUENOS[producto.slug] ?? ADMIN.uid
-    batch.set(ref, { ...producto, vendedorUid, fechaCreacion: fecha, fechaActualizacion: fecha })
+    const condicion = CONDICION[producto.slug] ?? (producto.visible ? 'nuevo' : '')
+    batch.set(ref, { ...producto, vendedorUid, condicion, fechaCreacion: fecha, fechaActualizacion: fecha })
     // Registro del slug (lo exige la regla de alta para que las URLs sean únicas).
     batch.set(db.doc(`slugs/${producto.slug}`), { productoId: ref.id, vendedorUid })
   })

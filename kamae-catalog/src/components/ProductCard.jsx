@@ -35,6 +35,11 @@ export default function ProductCard({ producto, prioridad = false }) {
             className="absolute top-2 left-2 bg-washi/90"
           />
         )}
+        {producto.condicion === 'usado' && (
+          <span className="absolute top-2 right-2 rounded-sm bg-washi/90 px-2 py-0.5 text-xs font-medium tracking-wide text-sumi">
+            Usado
+          </span>
+        )}
       </div>
       <h3 className="mt-3 text-sm leading-snug font-medium group-hover:text-shu-texto sm:text-base">
         {producto.nombre}
@@ -45,6 +50,11 @@ export default function ProductCard({ producto, prioridad = false }) {
       </p>
       {producto.disponibilidad === 'a_pedido' && producto.tiempoProduccion && (
         <p className="mt-0.5 text-sm text-shu-texto">A pedido · {producto.tiempoProduccion}</p>
+      )}
+      {producto.vendedor && (
+        <p className="mt-1 truncate text-xs text-sumi-soft">
+          {producto.vendedor.nombre} · {producto.vendedor.ciudad}
+        </p>
       )}
     </Link>
   )

@@ -41,6 +41,7 @@ function Detalle({ producto }) {
     precio,
     moneda: producto.moneda,
     whatsapp: producto.whatsapp,
+    vendedor: producto.vendedor?.nombre ?? null, // para agrupar la lista de consulta por vendedor
   }
   // La opción elegida ya está en la lista: el botón lo muestra (evita agregarla dos veces sin querer).
   const yaEnLista = enLista.some((i) => claveItem(i) === claveItem(item))
@@ -111,7 +112,14 @@ function Detalle({ producto }) {
 
         {/* Información y compra */}
         <div>
-          <BadgeDisponibilidad disponibilidad={producto.disponibilidad} />
+          <div className="flex flex-wrap gap-2">
+            <BadgeDisponibilidad disponibilidad={producto.disponibilidad} />
+            {producto.condicion && (
+              <span className="inline-block rounded-sm bg-sumi/10 px-2 py-0.5 text-xs font-medium tracking-wide text-sumi">
+                {producto.condicion === 'usado' ? 'Usado' : 'Nuevo'}
+              </span>
+            )}
+          </div>
           <h1 className="mt-3 font-serif text-3xl leading-tight">{producto.nombre}</h1>
           <p className="mt-3 text-2xl">{formatearPrecio(precio, producto.moneda)}</p>
 
@@ -156,7 +164,15 @@ function Detalle({ producto }) {
             </fieldset>
           )}
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          {/* Quién publica: el comprador sabe con quién va a hablar antes de escribir. */}
+          {producto.vendedor && (
+            <p className="mt-8 text-sm text-sumi-soft">
+              Publicado por <strong className="font-medium text-sumi">{producto.vendedor.nombre}</strong>{' '}
+              · {producto.vendedor.ciudad}
+            </p>
+          )}
+
+          <div className={`${producto.vendedor ? 'mt-3' : 'mt-8'} flex flex-col gap-3 sm:flex-row`}>
             {cta('flex-1')}
             {yaEnLista ? (
               <Link

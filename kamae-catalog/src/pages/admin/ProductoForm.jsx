@@ -18,7 +18,13 @@ import {
 import { useSesion } from '../../hooks/useSesion.js'
 import { borrarImagenPorToken } from '../../utils/cloudinarySubida.js'
 import { camposFaltantes } from '../../utils/completitud.js'
-import { CATEGORIAS, DISCIPLINAS, DISPONIBILIDAD, MONEDAS } from '../../utils/constantes.js'
+import {
+  CATEGORIAS,
+  CONDICIONES,
+  DISCIPLINAS,
+  DISPONIBILIDAD,
+  MONEDAS,
+} from '../../utils/constantes.js'
 import { slugify } from '../../utils/slug.js'
 
 const FORM_VACIO = {
@@ -32,6 +38,7 @@ const FORM_VACIO = {
   tiempoProduccion: '',
   variantes: [],
   imagenes: [],
+  condicion: '', // se elige explícitamente (obligatorio para publicar)
   whatsapp: '', // en el form: solo los 10 dígitos locales (sin 549)
 }
 
@@ -96,6 +103,7 @@ function aFirestore(f) {
       alt: alt.trim(),
     })),
     whatsapp: f.whatsapp ? `549${f.whatsapp}` : '',
+    condicion: f.condicion,
   }
   return { ...datos, visible: camposFaltantes(datos).length === 0 }
 }
@@ -301,6 +309,21 @@ function Formulario({ id }) {
           >
             <option value="">Elegí…</option>
             {CATEGORIAS.map((c) => (
+              <option key={c.valor} value={c.valor}>
+                {c.etiqueta}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo id="condicion" etiqueta="Condición">
+          <select
+            id="condicion"
+            value={form.condicion}
+            onChange={(e) => set('condicion', e.target.value)}
+            className={inputClase}
+          >
+            <option value="">Elegí…</option>
+            {CONDICIONES.map((c) => (
               <option key={c.valor} value={c.valor}>
                 {c.etiqueta}
               </option>

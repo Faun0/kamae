@@ -8,6 +8,7 @@ const REQUISITOS = [
   ['precio', (p) => p.precio !== null && p.precio !== '' && p.precio !== undefined],
   ['imagen', (p) => p.imagenes?.length > 0],
   ['WhatsApp', (p) => Boolean(p.whatsapp)],
+  ['condición', (p) => Boolean(p.condicion)],
 ]
 
 /** Nombres de los datos que faltan para publicar (vacío = completo). */

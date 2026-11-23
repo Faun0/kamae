@@ -39,7 +39,7 @@ service cloud.firestore {
     function productoValido(d) {
       let campos = ['nombre', 'slug', 'descripcion', 'disciplina', 'categoria', 'precio',
         'moneda', 'disponibilidad', 'tiempoProduccion', 'variantes', 'visible',
-        'imagenes', 'whatsapp', 'vendedorUid', 'fechaCreacion', 'fechaActualizacion'];
+        'imagenes', 'whatsapp', 'vendedorUid', 'condicion', 'fechaCreacion', 'fechaActualizacion'];
       return d.keys().hasOnly(campos) && d.keys().hasAll(campos)
         && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 120
         && d.slug is string && d.slug.size() <= 100
@@ -58,6 +58,7 @@ service cloud.firestore {
         && d.whatsapp is string
         && (d.whatsapp == '' || d.whatsapp.matches('^549[0-9]{10}$'))
         && d.vendedorUid is string
+        && d.condicion in ['', 'nuevo', 'usado']
         && d.fechaCreacion is timestamp
         && d.fechaActualizacion is timestamp
         // Solo se publica un producto completo (mismo criterio que utils/completitud.js).
@@ -70,7 +71,8 @@ service cloud.firestore {
         && d.categoria != ''
         && d.precio != null
         && d.imagenes.size() > 0
-        && d.whatsapp != '';
+        && d.whatsapp != ''
+        && d.condicion != '';
     }
 
     match /admins/{uid} {
@@ -86,10 +88,12 @@ service cloud.firestore {
 
       // Registro: el propio usuario crea su perfil, SIEMPRE como 'pendiente'.
       allow create: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'email', 'estado', 'emailVerificado', 'fechaSolicitud', 'fechaActualizacion'])
-        && request.resource.data.keys().hasAll(['nombre', 'email', 'estado', 'emailVerificado', 'fechaSolicitud', 'fechaActualizacion'])
+        && request.resource.data.keys().hasOnly(['nombre', 'ciudad', 'email', 'estado', 'emailVerificado', 'fechaSolicitud', 'fechaActualizacion'])
+        && request.resource.data.keys().hasAll(['nombre', 'ciudad', 'email', 'estado', 'emailVerificado', 'fechaSolicitud', 'fechaActualizacion'])
         && request.resource.data.nombre is string
         && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 80
+        && request.resource.data.ciudad is string
+        && request.resource.data.ciudad.size() > 0 && request.resource.data.ciudad.size() <= 60
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.estado == 'pendiente'
         && request.resource.data.emailVerificado == emailVerificado()
@@ -110,6 +114,27 @@ service cloud.firestore {
           && request.resource.data.fechaActualizacion == request.time
         );
 
+      allow delete: if esAdmin();
+    }
+
+    // Perfil PÚBLICO de quien publica: solo nombre y ciudad (se muestran en tarjetas y detalle).
+    // El email y el estado siguen privados en /usuarios.
+    function perfilPublicoValido(d) {
+      return d.keys().hasOnly(['nombre', 'ciudad']) && d.keys().hasAll(['nombre', 'ciudad'])
+        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 80
+        && d.ciudad is string && d.ciudad.size() > 0 && d.ciudad.size() <= 60;
+    }
+
+    match /vendedores/{uid} {
+      allow read: if true;
+      // Cada uno escribe el suyo. Un vendedor no puede cambiar el nombre con el que el admin
+      // lo aprobó (evita hacerse pasar por otro); el admin elige el suyo libremente.
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && perfilPublicoValido(request.resource.data)
+        && (esAdmin()
+          || (esVendedor()
+            && request.resource.data.nombre == get(/databases/$(database)/documents/usuarios/$(uid)).data.nombre));
+      // Al suspender o eliminar un vendedor, el admin borra su perfil público.
       allow delete: if esAdmin();
     }
 

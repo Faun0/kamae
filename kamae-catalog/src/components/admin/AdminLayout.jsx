@@ -104,6 +104,7 @@ function Aviso({ titulo, children, acciones }) {
 
 function SolicitarAcceso({ usuario }) {
   const [nombre, setNombre] = useState('')
+  const [ciudad, setCiudad] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -112,7 +113,7 @@ function SolicitarAcceso({ usuario }) {
     setEnviando(true)
     setError(null)
     try {
-      await solicitarAcceso(nombre)
+      await solicitarAcceso(nombre, ciudad)
     } catch {
       setError('No se pudo enviar la solicitud. Probá de nuevo.')
       setEnviando(false)
@@ -138,10 +139,22 @@ function SolicitarAcceso({ usuario }) {
             className={inputClase}
           />
         </div>
+        <div>
+          <label htmlFor="ciudad-solicitud" className={etiquetaClase}>
+            Tu ciudad
+          </label>
+          <input
+            id="ciudad-solicitud"
+            value={ciudad}
+            onChange={(e) => setCiudad(e.target.value)}
+            maxLength={60}
+            className={inputClase}
+          />
+        </div>
         {error && <p className="text-sm text-shu">{error}</p>}
         <button
           type="submit"
-          disabled={enviando || !nombre.trim()}
+          disabled={enviando || !nombre.trim() || !ciudad.trim()}
           className={`w-full ${botonPrimario}`}
         >
           {enviando ? 'Enviando…' : 'Pedir acceso'}

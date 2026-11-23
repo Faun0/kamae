@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore'
 import { adminDb } from './admin.js'
 import { borrarProductosDeVendedor } from './productosAdmin.js'
+import { borrarPerfilPublico } from './vendedoresAdmin.js'
 
 /** Perfiles de vendedores en tiempo real, del más reciente al más viejo. */
 export function suscribirUsuarios(onDatos, onError) {
@@ -28,12 +29,14 @@ export const aprobarUsuario = (uid) => cambiarEstado(uid, 'aprobado')
 export const rechazarUsuario = (uid) => cambiarEstado(uid, 'rechazado')
 
 /**
- * Suspende al vendedor y borra todos sus productos. Primero cambia el estado, así las
+ * Suspende al vendedor y borra todos sus productos y su perfil público. Primero cambia el estado, así las
  * reglas le impiden publicar algo nuevo mientras se borra lo existente.
  */
 export async function suspenderUsuario(uid) {
   await cambiarEstado(uid, 'suspendido')
-  return borrarProductosDeVendedor(uid)
+  const borrados = await borrarProductosDeVendedor(uid)
+  await borrarPerfilPublico(uid) // deja de figurar como vendedor; al reactivarlo lo vuelve a completar
+  return borrados
 }
 
 /**
@@ -43,6 +46,7 @@ export async function suspenderUsuario(uid) {
 export async function eliminarUsuario(uid) {
   await cambiarEstado(uid, 'suspendido')
   const borrados = await borrarProductosDeVendedor(uid)
+  await borrarPerfilPublico(uid)
   await deleteDoc(doc(adminDb, 'usuarios', uid))
   return borrados
 }

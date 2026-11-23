@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLoaderData, useSearchParams } from 'react-router-dom'
 import FiltroChips from '../components/FiltroChips.jsx'
 import ProductCard from '../components/ProductCard.jsx'
-import { CATEGORIAS, DISCIPLINAS } from '../utils/constantes.js'
+import { CATEGORIAS, CONDICIONES, DISCIPLINAS } from '../utils/constantes.js'
 import { rangoPrecio } from '../utils/formato.js'
 
 // Cuántas tarjetas cargan su imagen de inmediato (primera fila en escritorio).
@@ -18,7 +18,7 @@ const ORDENES = [
 const normalizar = (texto) =>
   (texto ?? '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{M}/gu, '') // quita las marcas de acento (diacríticos)
     .toLowerCase()
 
 const etiquetaCategoria = (valor) => CATEGORIAS.find((c) => c.valor === valor)?.etiqueta ?? ''
@@ -30,6 +30,9 @@ const textoBuscable = (p) =>
       p.descripcion,
       etiquetaCategoria(p.categoria),
       ...(p.variantes ?? []).map((v) => v.etiqueta),
+      p.condicion,
+      p.vendedor?.nombre,
+      p.vendedor?.ciudad,
     ].join(' '),
   )
 
@@ -46,6 +49,7 @@ export default function Catalogo() {
   const disciplina = params.get('disciplina')
   const categoria = params.get('categoria')
   const orden = params.get('orden') ?? ''
+  const condicion = params.get('condicion')
 
   // La búsqueda tiene estado propio: si el input leyera la URL en cada tecla, al tipear
   // rápido se perdían letras. Se filtra al instante y la URL se actualiza al dejar de tipear.
@@ -89,6 +93,7 @@ export default function Catalogo() {
   const terminos = normalizar(busqueda).split(/\s+/).filter(Boolean)
   const filtrados = porDisciplina
     .filter((p) => !categoria || p.categoria === categoria)
+    .filter((p) => !condicion || p.condicion === condicion)
     .filter((p) => {
       if (!terminos.length) return true
       const texto = textoBuscable(p)
@@ -96,7 +101,8 @@ export default function Catalogo() {
     })
   // El catálogo ya viene del más nuevo al más viejo; solo se reordena por precio.
   const ordenados = comparadores[orden] ? [...filtrados].sort(comparadores[orden]) : filtrados
-  const hayFiltros = Boolean(disciplina || categoria || busqueda)
+  // El filtro de condición solo aparece si hay productos nuevos Y usados para elegir.
+  const condiciones = CONDICIONES.filter((c) => productos.some((p) => p.condicion === c.valor))
 
   return (
     <section>
@@ -136,6 +142,14 @@ export default function Catalogo() {
             onCambiar={(valor) => cambiarParametro('categoria', valor)}
           />
         )}
+        {condiciones.length > 1 && (
+          <FiltroChips
+            titulo="Condición"
+            opciones={condiciones}
+            valor={condicion}
+            onCambiar={(valor) => cambiarParametro('condicion', valor)}
+          />
+        )}
       </div>
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
@@ -168,7 +182,7 @@ export default function Catalogo() {
         <div className="mt-4 rounded-sm border border-dashed border-sumi/30 py-16 text-center">
           <p className="text-sumi-soft">
             {busqueda
-              ? `No hay productos que coincidan con “${busqueda}”${hayFiltros && (disciplina || categoria) ? ' con estos filtros' : ''}.`
+              ? `No hay productos que coincidan con “${busqueda}”${disciplina || categoria || condicion ? ' con estos filtros' : ''}.`
               : 'No hay productos con estos filtros.'}
           </p>
           <button

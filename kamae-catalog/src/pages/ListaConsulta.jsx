@@ -55,7 +55,7 @@ export default function ListaConsulta() {
             <button
               type="button"
               onClick={() => listaConsulta.vaciar()}
-              className="text-shu underline underline-offset-4"
+              className="inline-flex min-h-11 items-center text-shu-texto underline underline-offset-4"
             >
               Sí, vaciar
             </button>{' '}
@@ -63,7 +63,7 @@ export default function ListaConsulta() {
             <button
               type="button"
               onClick={() => setConfirmarVaciar(false)}
-              className="underline underline-offset-4"
+              className="inline-flex min-h-11 items-center underline underline-offset-4"
             >
               Cancelar
             </button>
@@ -72,7 +72,7 @@ export default function ListaConsulta() {
           <button
             type="button"
             onClick={() => setConfirmarVaciar(true)}
-            className="text-sumi-soft underline underline-offset-4 hover:text-sumi"
+            className="inline-flex min-h-11 items-center text-sumi-soft underline underline-offset-4 hover:text-sumi"
           >
             Vaciar lista
           </button>
@@ -85,11 +85,16 @@ export default function ListaConsulta() {
 function GrupoConsulta({ grupo, titulo }) {
   const { numero, items } = grupo
   const totales = totalesPorMoneda(items)
+  // Ítems agregados antes de que existiera el perfil público no traen el nombre.
+  const vendedor = items.find((i) => i.vendedor)?.vendedor
 
   return (
     <div className="mt-8">
       {titulo && (
-        <h2 className="mb-2 text-xs tracking-widest text-sumi-soft uppercase">{titulo}</h2>
+        <h2 className="mb-2 text-[0.8125rem] tracking-widest text-sumi-soft uppercase">
+          {titulo}
+          {vendedor && <span className="normal-case tracking-normal"> · {vendedor}</span>}
+        </h2>
       )}
       <ul className="divide-y divide-sumi/10 border-y border-sumi/10">
         {items.map((item) => (

@@ -50,6 +50,7 @@ const producto = (vendedorUid, cambios = {}) => ({
   imagenes: [{ url: 'https://example.com/a.webp', publicId: 'kamae/a', alt: '' }],
   whatsapp: '5493511234567',
   vendedorUid,
+  condicion: 'nuevo',
   fechaCreacion: serverTimestamp(),
   fechaActualizacion: serverTimestamp(),
   ...cambios,
@@ -57,6 +58,7 @@ const producto = (vendedorUid, cambios = {}) => ({
 
 const perfil = (estado, cambios = {}) => ({
   nombre: 'Vendedor',
+  ciudad: 'Rosario',
   email: 'v@test.com',
   estado,
   emailVerificado: true,
@@ -235,6 +237,7 @@ describe('usuarios sin permiso para publicar', () => {
 describe('registro de vendedores (usuarios/{uid})', () => {
   const solicitud = (cambios = {}) => ({
     nombre: 'Nuevo Vendedor',
+    ciudad: 'Córdoba',
     email: `${NUEVO}@test.com`,
     estado: 'pendiente',
     emailVerificado: false,
@@ -254,6 +257,7 @@ describe('registro de vendedores (usuarios/{uid})', () => {
     'diciendo que verificó el email sin haberlo hecho': { emailVerificado: true },
     'sin nombre': { nombre: '' },
     'con campos extra': { rol: 'admin' },
+    'sin ciudad': { ciudad: '' },
   }
   for (const [caso, cambios] of Object.entries(invalidas)) {
     it(`NO crea su perfil ${caso}`, async () => {
@@ -372,6 +376,7 @@ describe('validación del esquema (aun siendo admin)', () => {
     'campos eliminados del modelo (orden)': { orden: 1 },
     'visible no booleano': { visible: 'si' },
     'campo extra': { stock: 10 },
+    'condición inexistente': { condicion: 'reacondicionado' },
     'fecha del cliente en vez de serverTimestamp': { fechaCreacion: Timestamp.fromDate(new Date('2020-01-01')) },
     'más de 10 imágenes': {
       imagenes: Array.from({ length: 11 }, (_, i) => ({ url: `u${i}`, publicId: `p${i}`, alt: '' })),
@@ -399,6 +404,7 @@ describe('validación del esquema (aun siendo admin)', () => {
     'sin precio': { precio: null },
     'sin imágenes': { imagenes: [] },
     'sin WhatsApp': { whatsapp: '' },
+    'sin condición': { condicion: '' },
   }
 
   for (const [caso, cambios] of Object.entries(incompletos)) {
@@ -417,8 +423,13 @@ describe('validación del esquema (aun siendo admin)', () => {
         precio: null,
         imagenes: [],
         whatsapp: '',
+        condicion: '',
       }),
     )
+  })
+
+  it('acepta productos usados', async () => {
+    await assertSucceeds(nuevoAdmin({ condicion: 'usado' }))
   })
 
   it('no permite publicar un borrador incompleto editando solo `visible`', async () => {
@@ -441,6 +452,47 @@ describe('validación del esquema (aun siendo admin)', () => {
     batch.set(doc(db, 'productos', 'nuevo'), sinDueno)
     batch.set(doc(db, 'slugs', 'nuevo'), { productoId: 'nuevo', vendedorUid: ADMIN })
     await assertFails(batch.commit())
+  })
+})
+
+describe('perfil público (vendedores/{uid})', () => {
+  const publico = (cambios = {}) => ({ nombre: 'Vendedor', ciudad: 'Rosario', ...cambios })
+
+  it('cualquiera (incluso anónimo) lo lee y lista', async () => {
+    await testEnv.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'vendedores', VEND_A), publico()))
+    await assertSucceeds(getDoc(doc(anonimo(), 'vendedores', VEND_A)))
+    await assertSucceeds(getDocs(collection(anonimo(), 'vendedores')))
+  })
+
+  it('un vendedor aprobado crea y edita el suyo con el nombre aprobado', async () => {
+    const ref = doc(vendA(), 'vendedores', VEND_A)
+    await assertSucceeds(setDoc(ref, publico()))
+    await assertSucceeds(setDoc(ref, publico({ ciudad: 'Córdoba' })))
+  })
+
+  it('un vendedor NO usa otro nombre que el aprobado', async () => {
+    await assertFails(setDoc(doc(vendA(), 'vendedores', VEND_A), publico({ nombre: 'Otro Nombre' })))
+  })
+
+  it('NO crea el perfil público de otro ni agrega datos extra', async () => {
+    await assertFails(setDoc(doc(vendA(), 'vendedores', VEND_B), publico()))
+    await assertFails(setDoc(doc(vendA(), 'vendedores', VEND_A), publico({ email: 'x@test.com' })))
+    await assertFails(setDoc(doc(vendA(), 'vendedores', VEND_A), publico({ ciudad: '' })))
+  })
+
+  it('pendientes, suspendidos y no verificados NO tienen perfil público', async () => {
+    for (const [uid, verificado] of [[PENDIENTE, true], [SUSPENDIDO, true], [SIN_VERIFICAR, false]]) {
+      await assertFails(setDoc(doc(ctx(uid, verificado), 'vendedores', uid), publico()))
+    }
+    await assertFails(setDoc(doc(anonimo(), 'vendedores', 'x'), publico()))
+  })
+
+  it('el admin elige su nombre público y puede borrar perfiles ajenos; un vendedor no', async () => {
+    await assertSucceeds(setDoc(doc(admin(), 'vendedores', ADMIN), publico({ nombre: 'Cualquier Nombre' })))
+    await testEnv.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'vendedores', VEND_B), publico()))
+    await assertFails(deleteDoc(doc(vendA(), 'vendedores', VEND_B)))
+    await assertFails(setDoc(doc(admin(), 'vendedores', VEND_B), publico({ nombre: 'Pisado' })))
+    await assertSucceeds(deleteDoc(doc(admin(), 'vendedores', VEND_B)))
   })
 })
 

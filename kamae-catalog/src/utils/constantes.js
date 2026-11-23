@@ -29,3 +29,8 @@ export const DISPONIBILIDAD = [
   { valor: 'agotado', etiqueta: 'Agotado' },
   { valor: 'a_pedido', etiqueta: 'A pedido' },
 ]
+
+export const CONDICIONES = [
+  { valor: 'nuevo', etiqueta: 'Nuevo' },
+  { valor: 'usado', etiqueta: 'Usado' },
+]

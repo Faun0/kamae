@@ -43,18 +43,20 @@
   imagenes: [{ url, publicId, alt }],  // publicId de Cloudinary (transformaciones y borrado)
   whatsapp: String,                // '549' + 10 dígitos, o '' en borrador. Por producto (un vendedor puede publicar algo de otra persona)
   vendedorUid: String,             // dueño (uid de quien lo creó); inmutable. Un vendedor solo toca los suyos
+  condicion: ''|'nuevo'|'usado',   // '' solo en borrador; badge "Usado" y filtro ?condicion= en el catálogo
   fechaCreacion, fechaActualizacion // serverTimestamp(); el catálogo y el admin ordenan por fechaCreacion desc
 }
 ```
 No usar la palabra "Armas" como categoría.
-- **Publicación automática**: al guardar, el producto se publica (`visible: true`) solo si tiene descripción, disciplina, categoría, precio, ≥1 imagen y WhatsApp; si falta algo queda como borrador y el admin muestra qué falta. Criterio duplicado en `utils/completitud.js` y `productoCompleto()` de `firestore.rules`: mantenerlos sincronizados.
+- **Publicación automática**: al guardar, el producto se publica (`visible: true`) solo si tiene descripción, disciplina, categoría, precio, ≥1 imagen, WhatsApp y condición; si falta algo queda como borrador y el admin muestra qué falta. Criterio duplicado en `utils/completitud.js` y `productoCompleto()` de `firestore.rules`: mantenerlos sincronizados.
 - **Sin "destacado" ni "orden" manual** (decisión del usuario): con varios admins se pisarían el orden entre sí.
 - Lista de consulta: el total se muestra separado por moneda (nunca sumar ARS con USD).
 
 ## Roles y otras colecciones
 - **Admin**: doc en `admins/{uid}` (se crea a mano en la consola). Ve y edita todo; aprueba/rechaza/suspende/elimina vendedores en `/admin/usuarios`. No necesita email verificado.
 - **Vendedor**: se registra en `/login` → "Crear cuenta". Puede publicar solo si su perfil está `aprobado` **y** verificó su email (`email_verified` del token). Solo ve/edita/borra **sus** productos; no ve borradores ajenos ni la gestión de usuarios.
-- `usuarios/{uid}`: `{ nombre, email, estado: 'pendiente'|'aprobado'|'rechazado'|'suspendido', emailVerificado, fechaSolicitud, fechaActualizacion }`. El usuario lo crea él mismo, siempre `pendiente`; solo puede refrescar `emailVerificado` con el valor real de su token. El admin solo cambia `estado`.
+- `usuarios/{uid}` (PRIVADO): `{ nombre, ciudad, email, estado: 'pendiente'|'aprobado'|'rechazado'|'suspendido', emailVerificado, fechaSolicitud, fechaActualizacion }` (`ciudad` se pide al registrarse; perfiles viejos pueden no tenerla).
+- `vendedores/{uid}` (PÚBLICO, lectura para cualquiera): `{ nombre, ciudad }` y nada más. Se muestra en tarjetas ("Nombre · Ciudad"), en el detalle ("Publicado por…"), en los grupos de la lista de consulta y entra en la búsqueda. Cada uno escribe el suyo desde la tarjeta "Tu perfil público" del panel (`components/admin/PerfilPublico.jsx`), que hay que completar antes de "+ Nuevo producto". **Un vendedor solo puede usar el nombre con el que fue aprobado** (la regla lo compara con `usuarios/{uid}.nombre`); el admin elige el suyo. Suspender/eliminar borra este doc. El catálogo lo trae junto con los productos (`obtenerCatalogo` en `firebase/productos.js`, cacheado); si falla, el catálogo se muestra igual sin vendedor. El usuario lo crea él mismo, siempre `pendiente`; solo puede refrescar `emailVerificado` con el valor real de su token. El admin solo cambia `estado`.
 - **Suspender o eliminar a un vendedor borra TODOS sus productos** (decisión del usuario; sus imágenes quedan huérfanas en Cloudinary). Eliminar borra el perfil pero no la cuenta de Auth (requiere Admin SDK): podría volver a pedir acceso como pendiente; para bloquear, suspender.
 - `slugs/{slug}`: `{ productoId, vendedorUid }`. Registro para que las URLs sean únicas (un vendedor no puede listar productos ajenos para chequearlo). La regla de alta de producto exige, vía `getAfter`, que el slug se registre en el mismo batch; si ya existe, el batch falla. El slug de un producto no cambia al editar.
 - Sin plan Blaze no hay emails automáticos al admin ("nuevo usuario") ni al vendedor ("aprobado"): el admin ve un contador de pendientes en la pestaña Usuarios.
@@ -111,6 +113,7 @@ No usar la palabra "Armas" como categoría.
 6. ✅ Deploy en **https://kamae-ar.web.app** (proyecto Firebase `kamae-ar`, Firestore en `southamerica-east1`, plan Spark). Admin de producción: `cris.javi.05@gmail.com` con doc `admins/{uid}`. API key web restringida por referrer (`kamae-ar.web.app`, `kamae-ar.firebaseapp.com`). El sign-up de Auth tiene que quedar **habilitado** (los vendedores se registran solos; la aprobación del admin es el filtro). Sitio extra `kamae.web.app`: descartado por ahora.
 6.5. ✅ Vendedores: registro con aprobación del admin, verificación de email, recuperar contraseña, cada vendedor gestiona solo sus productos.
 6.6. ✅ Home nueva, catálogo en `/catalogo`, página "Sobre Kamae" y fuente propia (ver `README-home.md`).
+6.7. Mejoras de `ANALISIS-UX-UI.md`: etapa 1 (interfaz) ✅ publicada; etapa 2 (perfil público del vendedor + condición) implementada y testeada en local. **Pendiente en producción** (requiere autorización del usuario): migrar `condicion: 'nuevo'` en los 3 productos existentes → `npx firebase deploy --only firestore:rules` → push. En ese orden: el código nuevo guarda `condicion`, que las reglas viejas rechazan.
 7. QA en móviles reales + Lighthouse
 
 ## Deploy

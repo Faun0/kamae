@@ -1,7 +1,7 @@
 // Esqueleto mientras se resuelve el primer loader (HydrateFallback del router).
 export default function CargandoCatalogo() {
   return (
-    <div className="animate-pulse" aria-busy="true" aria-label="Cargando">
+    <div className="motion-safe:animate-pulse" aria-busy="true" aria-label="Cargando">
       <div className="h-9 w-48 rounded-sm bg-sumi/10" />
       <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: 8 }, (_, i) => (

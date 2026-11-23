@@ -90,7 +90,7 @@ export default function Sobre() {
         </Link>
         <Link
           to="/login"
-          className="inline-flex items-center justify-center rounded-sm border border-sumi/30 px-6 py-3 font-medium transition-colors hover:border-sumi"
+          className="inline-flex items-center justify-center rounded-sm border border-sumi/50 px-6 py-3 font-medium transition-colors hover:border-sumi"
         >
           Quiero publicar
         </Link>

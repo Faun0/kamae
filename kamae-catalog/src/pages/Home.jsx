@@ -13,7 +13,7 @@ const DISCIPLINAS_HOME = [
 const botonPrimario =
   'inline-flex items-center justify-center rounded-sm bg-sumi px-6 py-3 font-medium text-washi transition-colors hover:bg-ai'
 const botonSecundario =
-  'inline-flex items-center justify-center rounded-sm border border-sumi/30 px-6 py-3 font-medium transition-colors hover:border-sumi'
+  'inline-flex items-center justify-center rounded-sm border border-sumi/50 px-6 py-3 font-medium transition-colors hover:border-sumi'
 const linkFlecha = 'text-sm font-medium text-shu underline-offset-4 hover:underline'
 
 export default function Home() {
@@ -60,8 +60,14 @@ export default function Home() {
         <h2 className="font-serif text-2xl sm:text-3xl">Cómo funciona</h2>
         <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {PASOS.map((paso, i) => (
-            <li key={paso.titulo} className="border-t border-sumi/15 pt-4">
-              <span className="font-serif text-3xl text-shu">{i + 1}</span>
+            // "Valorá" (próximamente): atenuado y con borde punteado, para que se lea planificado y no roto.
+            <li
+              key={paso.titulo}
+              className={`border-t pt-4 ${paso.proximamente ? 'border-dashed border-sumi/40' : 'border-sumi/15'}`}
+            >
+              <span className={`font-serif text-3xl ${paso.proximamente ? 'text-sumi-soft' : 'text-shu'}`}>
+                {i + 1}
+              </span>
               <h3 className="mt-2 flex flex-wrap items-center gap-2 font-medium">
                 {paso.titulo}
                 {paso.proximamente && (
@@ -171,7 +177,7 @@ function Ultimos({ productos }) {
 
 function UltimosCargando() {
   return (
-    <section className="animate-pulse" aria-busy="true" aria-label="Cargando productos">
+    <section className="motion-safe:animate-pulse" aria-busy="true" aria-label="Cargando productos">
       <div className="h-8 w-64 rounded-sm bg-sumi/10" />
       <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
         {Array.from({ length: CANTIDAD_ULTIMOS }, (_, i) => (

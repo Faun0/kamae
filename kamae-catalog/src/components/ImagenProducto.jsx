@@ -3,6 +3,8 @@ import { imagenSrc, imagenSrcSet } from '../utils/cloudinary.js'
 /**
  * Imagen de producto optimizada (Cloudinary) con placeholder si no hay imagen.
  * Por defecto lazy; para la imagen principal del detalle pasar prioridad.
+ * `ajuste`: 'cover' recorta para llenar (grilla); 'contain' muestra la foto entera
+ * sobre fondo neutro (detalle: cada vendedor sube fotos de proporciones distintas).
  */
 export default function ImagenProducto({
   imagen,
@@ -11,6 +13,7 @@ export default function ImagenProducto({
   anchos,
   sizes,
   prioridad = false,
+  ajuste = 'cover',
   className = '',
 }) {
   const src = imagenSrc(imagen, ancho)
@@ -38,7 +41,7 @@ export default function ImagenProducto({
       loading={prioridad ? 'eager' : 'lazy'}
       fetchPriority={prioridad ? 'high' : undefined}
       decoding="async"
-      className={`bg-washi-dark object-cover ${className}`}
+      className={`bg-washi-dark ${ajuste === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
     />
   )
 }

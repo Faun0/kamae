@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import { Link, useLoaderData } from 'react-router-dom'
+import { Link, useLoaderData, useLocation } from 'react-router-dom'
 import BadgeDisponibilidad from '../components/BadgeDisponibilidad.jsx'
 import BotonWhatsApp from '../components/BotonWhatsApp.jsx'
 import ImagenProducto from '../components/ImagenProducto.jsx'
+import { useListaConsulta } from '../hooks/useListaConsulta.js'
 import { formatearPrecio, precioDe } from '../utils/formato.js'
-import { listaConsulta } from '../utils/listaConsulta.js'
+import { claveItem, listaConsulta } from '../utils/listaConsulta.js'
 import { mensajeProducto } from '../utils/whatsapp.js'
+
+const AVISO_VENTA = 'Coordinás directo con el vendedor; Kamae no interviene en la venta.'
 
 export default function ProductoDetalle() {
   const { producto } = useLoaderData()
@@ -14,8 +17,10 @@ export default function ProductoDetalle() {
 }
 
 function Detalle({ producto }) {
+  const location = useLocation()
   const variantes = producto.variantes ?? []
   const imagenes = producto.imagenes ?? []
+  const enLista = useListaConsulta()
 
   const [varianteIdx, setVarianteIdx] = useState(() => {
     if (!variantes.length) return null
@@ -23,7 +28,6 @@ function Detalle({ producto }) {
     return primeraDisponible === -1 ? 0 : primeraDisponible
   })
   const [imagenIdx, setImagenIdx] = useState(0)
-  const [agregado, setAgregado] = useState(false)
 
   const variante = varianteIdx === null ? null : variantes[varianteIdx]
   const precio = precioDe(producto, variante)
@@ -38,23 +42,42 @@ function Detalle({ producto }) {
     moneda: producto.moneda,
     whatsapp: producto.whatsapp,
   }
+  // La opción elegida ya está en la lista: el botón lo muestra (evita agregarla dos veces sin querer).
+  const yaEnLista = enLista.some((i) => claveItem(i) === claveItem(item))
 
-  function agregarALista() {
-    listaConsulta.agregar(item)
-    setAgregado(true)
-  }
+  // Si se llegó desde el catálogo, volver con los mismos filtros, búsqueda y orden.
+  const desde = location.state?.volverA
+  const volverA = desde?.startsWith('/catalogo') ? desde : '/catalogo'
+
+  const textoCta =
+    producto.disponibilidad === 'agotado' || sinStockVariante
+      ? 'Consultar reposición'
+      : 'Consultar por WhatsApp'
+  const cta = (className) => (
+    <BotonWhatsApp
+      numero={producto.whatsapp}
+      mensaje={mensajeProducto(item)}
+      evento={{ origen: 'detalle', producto: producto.slug, variante: item.variante }}
+      className={className}
+    >
+      {textoCta}
+    </BotonWhatsApp>
+  )
 
   return (
     <article>
       <title>{`${producto.nombre} · Kamae`}</title>
       <meta name="description" content={producto.descripcion} />
 
-      <Link to="/catalogo" className="text-sm text-sumi-soft hover:text-sumi">
+      <Link
+        to={volverA}
+        className="-my-2 inline-flex min-h-11 items-center text-sm text-sumi-soft hover:text-sumi"
+      >
         ← Volver al catálogo
       </Link>
 
-      <div className="mt-6 grid gap-8 md:grid-cols-2 md:gap-12">
-        {/* Galería */}
+      <div className="mt-4 grid gap-8 md:grid-cols-2 md:gap-12">
+        {/* Galería: la foto se muestra entera (cada vendedor sube lo que tiene). */}
         <div>
           <ImagenProducto
             imagen={imagenes[imagenIdx]}
@@ -63,10 +86,11 @@ function Detalle({ producto }) {
             anchos={[450, 700, 900, 1200]}
             sizes="(min-width: 768px) 50vw, 100vw"
             prioridad
+            ajuste="contain"
             className="aspect-square w-full rounded-sm ring-1 ring-sumi/10"
           />
           {imagenes.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
               {imagenes.map((imagen, i) => (
                 <button
                   key={imagen.publicId ?? imagen.url}
@@ -78,12 +102,7 @@ function Detalle({ producto }) {
                     i === imagenIdx ? 'border-shu' : 'border-transparent opacity-70'
                   }`}
                 >
-                  <ImagenProducto
-                    imagen={imagen}
-                    alt=""
-                    ancho={128}
-                    className="h-full w-full"
-                  />
+                  <ImagenProducto imagen={imagen} alt="" ancho={128} className="h-full w-full" />
                 </button>
               ))}
             </div>
@@ -97,24 +116,24 @@ function Detalle({ producto }) {
           <p className="mt-3 text-2xl">{formatearPrecio(precio, producto.moneda)}</p>
 
           {producto.disponibilidad === 'a_pedido' && producto.tiempoProduccion && (
-            <p className="mt-2 text-sm text-shu">
+            <p className="mt-2 text-sm text-shu-texto">
               Se fabrica a pedido · {producto.tiempoProduccion}
             </p>
           )}
 
           {variantes.length > 0 && (
             <fieldset className="mt-6 min-w-0">
-              <legend className="mb-2 text-xs tracking-widest text-sumi-soft uppercase">
+              <legend className="mb-2 text-[0.8125rem] tracking-widest text-sumi-soft uppercase">
                 Opción
               </legend>
               <div className="flex flex-wrap gap-2">
                 {variantes.map((v, i) => (
                   <label
                     key={v.etiqueta}
-                    className={`cursor-pointer rounded-sm border px-3 py-2 text-sm transition-colors has-focus-visible:outline-2 has-focus-visible:outline-shu ${
+                    className={`inline-flex min-h-11 cursor-pointer items-center rounded-sm border px-3 text-sm transition-colors has-focus-visible:outline-2 has-focus-visible:outline-shu ${
                       i === varianteIdx
                         ? 'border-sumi bg-sumi text-washi'
-                        : 'border-sumi/20 hover:border-sumi/50'
+                        : 'border-sumi/50 hover:border-sumi'
                     } ${v.disponible ? '' : 'line-through decoration-sumi-soft/60'}`}
                   >
                     <input
@@ -122,10 +141,7 @@ function Detalle({ producto }) {
                       name="variante"
                       className="sr-only"
                       checked={i === varianteIdx}
-                      onChange={() => {
-                        setVarianteIdx(i)
-                        setAgregado(false)
-                      }}
+                      onChange={() => setVarianteIdx(i)}
                     />
                     {v.etiqueta}
                     {!v.disponible && <span className="sr-only"> (sin stock)</span>}
@@ -141,43 +157,48 @@ function Detalle({ producto }) {
           )}
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <BotonWhatsApp
-              numero={producto.whatsapp}
-              mensaje={mensajeProducto(item)}
-              evento={{ origen: 'detalle', producto: producto.slug, variante: item.variante }}
-              className="flex-1"
-            >
-              {producto.disponibilidad === 'agotado' || sinStockVariante
-                ? 'Consultar reposición'
-                : 'Consultar por WhatsApp'}
-            </BotonWhatsApp>
-            <button
-              type="button"
-              onClick={agregarALista}
-              className="rounded-sm border border-sumi/30 px-6 py-3 font-medium transition-colors hover:border-sumi"
-            >
-              Agregar a la consulta
-            </button>
-          </div>
-          {agregado && (
-            <p className="mt-3 text-sm text-ai" role="status">
-              Agregado a tu lista.{' '}
-              <Link to="/consulta" className="underline underline-offset-4">
-                Ver lista de consulta
+            {cta('flex-1')}
+            {yaEnLista ? (
+              <Link
+                to="/consulta"
+                className="inline-flex items-center justify-center rounded-sm border border-ai/40 bg-ai/10 px-6 py-3 font-medium text-ai transition-colors hover:border-ai"
+              >
+                ✓ En tu consulta · Ver lista
               </Link>
-            </p>
-          )}
+            ) : (
+              <button
+                type="button"
+                onClick={() => listaConsulta.agregar(item)}
+                className="rounded-sm border border-sumi/50 px-6 py-3 font-medium transition-colors hover:border-sumi"
+              >
+                Agregar a la consulta
+              </button>
+            )}
+          </div>
+          <p className="mt-3 text-sm text-sumi-soft">{AVISO_VENTA}</p>
 
           {producto.descripcion && (
             <div className="mt-10 border-t border-sumi/10 pt-6">
-              <h2 className="text-xs tracking-widest text-sumi-soft uppercase">
+              <h2 className="text-[0.8125rem] tracking-widest text-sumi-soft uppercase">
                 Descripción
               </h2>
-              <p className="mt-3 leading-relaxed whitespace-pre-line">
-                {producto.descripcion}
-              </p>
+              <p className="mt-3 leading-relaxed whitespace-pre-line">{producto.descripcion}</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Celular: la acción principal siempre a mano (con la foto a ancho completo queda abajo). */}
+      <div
+        data-barra-cta
+        className="fixed inset-x-0 bottom-0 z-10 border-t border-sumi/10 bg-washi/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden"
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-xs text-sumi-soft">{variante?.etiqueta ?? producto.nombre}</p>
+            <p className="font-medium">{formatearPrecio(precio, producto.moneda)}</p>
+          </div>
+          {cta('ml-auto shrink-0 px-4')}
         </div>
       </div>
     </article>

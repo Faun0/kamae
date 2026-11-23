@@ -141,11 +141,11 @@ function ItemConsulta({ item }) {
         <p className="text-sm text-sumi-soft">{formatearPrecio(item.precio, item.moneda)}</p>
       </div>
 
-      <div className="flex items-center rounded-sm border border-sumi/20">
+      <div className="flex items-center rounded-sm border border-sumi/50">
         <button
           type="button"
           onClick={() => listaConsulta.cambiarCantidad(clave, item.cantidad - 1)}
-          className="px-3 py-1 text-sumi-soft hover:text-sumi"
+          className="flex h-11 w-11 items-center justify-center text-sumi-soft hover:text-sumi"
           aria-label={`Quitar una unidad de ${item.nombre}`}
         >
           −
@@ -154,7 +154,7 @@ function ItemConsulta({ item }) {
         <button
           type="button"
           onClick={() => listaConsulta.cambiarCantidad(clave, item.cantidad + 1)}
-          className="px-3 py-1 text-sumi-soft hover:text-sumi"
+          className="flex h-11 w-11 items-center justify-center text-sumi-soft hover:text-sumi"
           aria-label={`Agregar una unidad de ${item.nombre}`}
         >
           +
@@ -164,7 +164,7 @@ function ItemConsulta({ item }) {
       <button
         type="button"
         onClick={() => listaConsulta.quitar(clave)}
-        className="text-sm text-sumi-soft hover:text-shu"
+        className="flex h-11 w-11 items-center justify-center text-sm text-sumi-soft hover:text-shu-texto"
         aria-label={`Quitar ${item.nombre} de la lista`}
       >
         ✕

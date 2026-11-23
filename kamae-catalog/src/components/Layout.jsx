@@ -8,7 +8,7 @@ export default function Layout({ children }) {
   return (
     <div className="flex min-h-svh flex-col">
       <div
-        className={`fixed inset-x-0 top-0 z-20 h-0.5 origin-left bg-shu transition-transform duration-500 ${
+        className={`fixed inset-x-0 top-0 z-20 h-0.5 origin-left bg-shu motion-safe:transition-transform motion-safe:duration-500 ${
           navegando ? 'scale-x-75' : 'scale-x-0'
         }`}
         aria-hidden="true"

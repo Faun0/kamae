@@ -1,6 +1,6 @@
 const ESTILOS = {
   disponible: { texto: 'Disponible', clase: 'bg-ai/10 text-ai' },
-  a_pedido: { texto: 'A pedido', clase: 'bg-shu/10 text-shu' },
+  a_pedido: { texto: 'A pedido', clase: 'bg-shu/10 text-shu-texto' },
   agotado: { texto: 'Agotado', clase: 'bg-sumi/10 text-sumi-soft' },
 }
 

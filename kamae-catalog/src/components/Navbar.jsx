@@ -4,7 +4,7 @@ import { useListaConsulta } from '../hooks/useListaConsulta.js'
 import { marcaAdmin } from '../utils/marcaAdmin.js'
 
 const linkClass = ({ isActive }) =>
-  `flex items-center gap-1.5 text-sm tracking-wide transition-colors ${
+  `flex min-h-11 items-center gap-1.5 text-sm tracking-wide transition-colors ${
     isActive ? 'text-shu' : 'text-sumi-soft hover:text-sumi'
   }`
 
@@ -56,8 +56,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-10 border-b border-sumi/10 bg-washi/90 backdrop-blur">
       <nav className="mx-auto max-w-6xl px-4 sm:px-6" aria-label="Principal">
-        <div className="flex items-center justify-between py-4">
-          <Link to="/" className="flex items-baseline gap-2" onClick={cerrarMenu}>
+        <div className="flex items-center justify-between py-2">
+          <Link to="/" className="flex min-h-11 items-center gap-2" onClick={cerrarMenu}>
             <span className="font-serif text-xl font-semibold tracking-widest">KAMAE</span>
             <span className="font-serif text-sm text-shu" aria-hidden="true">
               構え
@@ -89,7 +89,7 @@ export default function Navbar() {
               aria-expanded={menuAbierto}
               aria-controls="menu-celular"
               aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
-              className="-mr-2 flex h-10 w-10 items-center justify-center rounded-sm text-sumi hover:bg-sumi/5"
+              className="-mr-2 flex h-11 w-11 items-center justify-center rounded-sm text-sumi hover:bg-sumi/5"
             >
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
                 {menuAbierto ? (

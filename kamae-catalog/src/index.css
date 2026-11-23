@@ -8,6 +8,8 @@
   --color-sumi-soft: #4a4742;
   --color-ai: #2b3a55;
   --color-shu: #b5452f;
+  /* Bermellón para TEXTO chico: #b5452f da 4.3:1 sobre fondos tintados (no llega a AA). */
+  --color-shu-texto: #a33d29;
 
   --font-sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   --font-serif: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia,
@@ -25,5 +27,13 @@
 
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-shu;
+  }
+}
+
+/* En celular, el detalle de producto tiene una barra fija con el botón de WhatsApp:
+   el footer suma espacio abajo para que la barra no tape sus links. */
+@media (width < 40rem) {
+  body:has([data-barra-cta]) footer {
+    padding-bottom: 5.5rem;
   }
 }

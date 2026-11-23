@@ -9,6 +9,7 @@ import ListaConsulta from './pages/ListaConsulta.jsx'
 import ProductoDetalle from './pages/ProductoDetalle.jsx'
 import NotFound from './pages/NotFound.jsx'
 import Sobre from './pages/Sobre.jsx'
+import { busquedaCatalogo } from './utils/busquedaCatalogo.js'
 
 // Las páginas de admin se cargan bajo demanda para no inflar el bundle público.
 const lazyPage = (importer) => async () => ({
@@ -47,7 +48,11 @@ export const router = createBrowserRouter([
           {
             path: 'catalogo',
             element: <Catalogo />,
-            loader: async () => ({ productos: await obtenerCatalogo() }),
+            loader: async ({ request }) => {
+              // Al entrar, el buscador del header arranca con el ?q= de la URL (link compartido).
+              busquedaCatalogo.iniciar(new URL(request.url).searchParams.get('q') ?? '')
+              return { productos: await obtenerCatalogo() }
+            },
             // Cambiar filtros (?disciplina=...) no vuelve a ejecutar el loader.
             shouldRevalidate: ({ currentUrl, nextUrl }) =>
               currentUrl.pathname !== nextUrl.pathname,

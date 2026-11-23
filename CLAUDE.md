@@ -113,7 +113,7 @@ No usar la palabra "Armas" como categoría.
 6. ✅ Deploy en **https://kamae-ar.web.app** (proyecto Firebase `kamae-ar`, Firestore en `southamerica-east1`, plan Spark). Admin de producción: `cris.javi.05@gmail.com` con doc `admins/{uid}`. API key web restringida por referrer (`kamae-ar.web.app`, `kamae-ar.firebaseapp.com`). El sign-up de Auth tiene que quedar **habilitado** (los vendedores se registran solos; la aprobación del admin es el filtro). Sitio extra `kamae.web.app`: descartado por ahora.
 6.5. ✅ Vendedores: registro con aprobación del admin, verificación de email, recuperar contraseña, cada vendedor gestiona solo sus productos.
 6.6. ✅ Home nueva, catálogo en `/catalogo`, página "Sobre Kamae" y fuente propia (ver `README-home.md`).
-6.7. Mejoras de `ANALISIS-UX-UI.md`: etapa 1 (interfaz) ✅ publicada; etapa 2 (perfil público del vendedor + condición) implementada y testeada en local. **Pendiente en producción** (requiere autorización del usuario): migrar `condicion: 'nuevo'` en los 3 productos existentes → `npx firebase deploy --only firestore:rules` → push. En ese orden: el código nuevo guarda `condicion`, que las reglas viejas rechazan.
+6.7. ✅ Mejoras de `ANALISIS-UX-UI.md`: etapa 1 (interfaz) y etapa 2 (perfil público del vendedor + condición nuevo/usado). Producción migrada el 2026-11-23 (`condicion: 'nuevo'` en los 3 productos existentes, antes de las reglas nuevas).
 7. QA en móviles reales + Lighthouse
 
 ## Deploy
